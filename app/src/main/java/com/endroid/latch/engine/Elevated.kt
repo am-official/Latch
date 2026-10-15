@@ -1,6 +1,5 @@
 package com.endroid.latch.engine
 
-import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
 import rikka.shizuku.Shizuku
@@ -14,16 +13,22 @@ object Elevated {
         val p = Runtime.getRuntime().exec(arrayOf("su", "-c", "echo ok"))
         val out = BufferedReader(InputStreamReader(p.inputStream)).readLine()
         p.waitFor() == 0 && out?.contains("ok") == true
-    } catch (_: Exception) { false }
+    } catch (_: Exception) {
+        false
+    }
 
     fun shizukuAvailable(): Boolean = try {
         Shizuku.pingBinder()
-    } catch (_: Throwable) { false }
+    } catch (_: Throwable) {
+        false
+    }
 
     fun shizukuPermissionGranted(): Boolean = try {
         if (!shizukuAvailable()) false
         else Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
-    } catch (_: Throwable) { false }
+    } catch (_: Throwable) {
+        false
+    }
 
     fun requestShizukuPermission(requestCode: Int = 9001) {
         try {
@@ -33,16 +38,35 @@ object Elevated {
         }
     }
 
-    /** Run shell: Shizuku → su → plain sh, depending on flags. */
+    /** Shizuku.newProcess is not public on all API jars — invoke via reflection. */
+    private fun shizukuProcess(cmd: Array<String>): Process? {
+        return try {
+            val m = Shizuku::class.java.getDeclaredMethod(
+                "newProcess",
+                Array<String>::class.java,
+                Array<String>::class.java,
+                String::class.java,
+            )
+            m.isAccessible = true
+            @Suppress("UNCHECKED_CAST")
+            m.invoke(null, cmd, null, null) as? Process
+        } catch (e: Throwable) {
+            Log.w(TAG, "shizuku newProcess reflection", e)
+            null
+        }
+    }
+
     fun runShell(cmd: String, preferShizuku: Boolean, allowSu: Boolean): Pair<Int, String> {
         if (preferShizuku && shizukuPermissionGranted()) {
-            try {
-                val process = Shizuku.newProcess(arrayOf("sh", "-c", cmd), null, null)
-                val stdout = process.inputStream.bufferedReader().readText()
-                val code = process.waitFor()
-                return code to stdout.take(4000)
-            } catch (e: Throwable) {
-                Log.w(TAG, "shizuku shell failed", e)
+            val process = shizukuProcess(arrayOf("sh", "-c", cmd))
+            if (process != null) {
+                return try {
+                    val stdout = process.inputStream.bufferedReader().readText()
+                    process.waitFor() to stdout.take(4000)
+                } catch (e: Throwable) {
+                    Log.w(TAG, "shizuku shell", e)
+                    -1 to (e.message ?: "shizuku failed")
+                }
             }
         }
         if (allowSu && hasSu()) {
