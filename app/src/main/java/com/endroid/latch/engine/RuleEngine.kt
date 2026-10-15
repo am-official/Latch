@@ -67,55 +67,28 @@ object RuleEngine {
         prefs.edit().putInt("bat_pct", percent).apply()
 
         RuleStore(context).load().filter { it.enabled }.forEach { rule ->
-            val match = when (rule.trigger) {
-                TriggerType.BATTERY_BELOW -> percent <= rule.triggerValue
-                TriggerType.BATTERY_ABOVE -> percent >= rule.triggerValue
+            val below = when (rule.trigger) {
+                TriggerType.BATTERY_BELOW -> true
+                TriggerType.BATTERY_ABOVE -> false
                 else -> return@forEach
             }
+            val threshold = rule.triggerValue
+            val latched = prefs.getBoolean("bat_latched_${rule.id}", false)
+            val match = if (below) RuleLogic.batteryBelow(percent, threshold)
+            else RuleLogic.batteryAbove(percent, threshold)
             if (!match) {
-                // clear latched state so next cross can fire
                 prefs.edit().putBoolean("bat_latched_${rule.id}", false).apply()
                 return@forEach
             }
-            val latched = prefs.getBoolean("bat_latched_${rule.id}", false)
-            val crossed = when (rule.trigger) {
-                TriggerType.BATTERY_BELOW -> prev < 0 || prev > rule.triggerValue
-                TriggerType.BATTERY_ABOVE -> prev < 0 || prev < rule.triggerValue
-                else -> false
+            if (!RuleLogic.shouldFireBattery(prev, percent, threshold, below, latched, force)) {
+                return@forEach
             }
-            if (force || crossed || !latched) {
-                if (!Conditions.holds(context, rule)) return@forEach
-                if (!cooldownOk(context, rule)) return@forEach
-                prefs.edit().putBoolean("bat_latched_${rule.id}", true).apply()
-                run(context, rule)
-            }
+            if (!Conditions.holds(context, rule)) return@forEach
+            if (!cooldownOk(context, rule)) return@forEach
+            prefs.edit().putBoolean("bat_latched_${rule.id}", true).apply()
+            run(context, rule)
         }
     }
-
-    /** Call after saving rules so current device state can satisfy triggers immediately. */
-    fun evaluateCurrentState(context: Context) {
-        val pct = com.endroid.latch.receiver.PowerReceiver.batteryPercent(context, null)
-        if (pct >= 0) onBattery(context, pct, force = true)
-        // wifi snapshot
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-        val wifi = if (android.os.Build.VERSION.SDK_INT >= 23) {
-            val net = cm.activeNetwork
-            val caps = net?.let { cm.getNetworkCapabilities(it) }
-            caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true
-        } else {
-            @Suppress("DEPRECATION")
-            cm.activeNetworkInfo?.type == android.net.ConnectivityManager.TYPE_WIFI
-        }
-        if (wifi) {
-            val ssid = try {
-                val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
-                @Suppress("DEPRECATION")
-                wm.connectionInfo?.ssid?.trim('"')
-            } catch (_: Exception) { null }
-            onWifi(context, true, ssid)
-        }
-    }
-
     fun onPowerConnected(context: Context, connected: Boolean) =
         fire(context, if (connected) TriggerType.CHARGER_CONNECTED else TriggerType.CHARGER_DISCONNECTED)
 
@@ -130,8 +103,7 @@ object RuleEngine {
             if (!ssid.isNullOrBlank()) {
                 match(context) {
                     it.trigger == TriggerType.WIFI_SSID &&
-                        it.triggerParam.isNotBlank() &&
-                        ssid.trim('"').equals(it.triggerParam.trim('"'), ignoreCase = true)
+                        RuleLogic.ssidMatches(ssid, it.triggerParam)
                 }
             }
         } else fire(context, TriggerType.WIFI_DISCONNECTED)
@@ -158,6 +130,8 @@ object RuleEngine {
     fun onMediaMounted(context: Context) = fire(context, TriggerType.MEDIA_MOUNTED)
 
     fun onTimeTick(context: Context, hour: Int, minute: Int) {
+        val nowMin = hour * 60 + minute
+        val day = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK)
         match(context) {
             when (it.trigger) {
                 TriggerType.TIME_DAILY ->
@@ -165,19 +139,15 @@ object RuleEngine {
                 TriggerType.TIME_WINDOW -> {
                     val endH = it.triggerParam.substringBefore(":").toIntOrNull() ?: 0
                     val endM = it.triggerParam.substringAfter(":").toIntOrNull() ?: 0
-                    val now = hour * 60 + minute
                     val start = it.triggerValue * 60 + it.triggerValue2
                     val end = endH * 60 + endM
-                    // fire once at window start only
-                    now == start
+                    // Fire once at window start minute
+                    nowMin == start && RuleLogic.inTimeWindow(nowMin, start, end)
                 }
                 TriggerType.DAY_OF_WEEK -> {
-                    val cal = java.util.Calendar.getInstance()
-                    val bit = 1 shl (cal.get(java.util.Calendar.DAY_OF_WEEK) - 1)
-                    (it.triggerValue and bit) != 0 &&
-                        it.triggerValue2 == hour // optional hour filter in value2; use -1?
-                    // Simplify: day mask only, fire at noon once — skip unless also time
-                    false
+                    // mask in triggerValue; optional hour:minute in value2 as minutes of day (-1 skip)
+                    RuleLogic.dayBitSet(it.triggerValue, day) &&
+                        (it.triggerValue2 < 0 || it.triggerValue2 == nowMin)
                 }
                 else -> false
             }
@@ -366,6 +336,35 @@ object RuleEngine {
                     android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_MEDIA_NEXT),
                 )
             }
+            ActionType.FORCE_STOP -> {
+                val pkg = action.param.trim().ifBlank { action.text.trim() }
+                if (pkg.isNotEmpty()) Elevated.forceStop(pkg, preferShizuku, allowSu)
+            }
+            ActionType.MOBILE_DATA -> {
+                val on = action.param.lowercase() !in setOf("off", "false", "0")
+                Elevated.setMobileData(on, preferShizuku, allowSu)
+            }
+            ActionType.AIRPLANE_MODE -> {
+                val on = action.param.lowercase() !in setOf("off", "false", "0")
+                Elevated.setAirplane(on, preferShizuku, allowSu)
+            }
         }
     }
+
+    /** Settings self-test: run pure logic checks + permission snapshot. */
+    fun selfTest(context: Context): String {
+        val sb = StringBuilder()
+        sb.appendLine("Latch self-test")
+        sb.appendLine("batteryBelow(50,98)=${RuleLogic.batteryBelow(50, 98)}")
+        sb.appendLine("shouldFire force=${RuleLogic.shouldFireBattery(50, 50, 98, true, true, true)}")
+        sb.appendLine("brightness30=${RuleLogic.brightnessRaw(30)}")
+        sb.appendLine("shizuku=${Elevated.shizukuAvailable()} perm=${Elevated.shizukuPermissionGranted()}")
+        sb.appendLine("su=${Elevated.hasSu()}")
+        val rules = RuleStore(context).load()
+        sb.appendLine("rules=${rules.size} enabled=${rules.count { it.enabled }}")
+        val pct = com.endroid.latch.receiver.PowerReceiver.batteryPercent(context, null)
+        sb.appendLine("batteryNow=$pct")
+        return sb.toString()
+    }
 }
+

@@ -5,14 +5,19 @@ import android.util.Log
 import rikka.shizuku.Shizuku
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.lang.reflect.Method
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 object Elevated {
     private const val TAG = "LatchElevated"
+    private val newProcessMethod = AtomicReference<Method?>()
 
     fun hasSu(): Boolean = try {
         val p = Runtime.getRuntime().exec(arrayOf("su", "-c", "echo ok"))
         val out = BufferedReader(InputStreamReader(p.inputStream)).readLine()
-        p.waitFor() == 0 && out?.contains("ok") == true
+        p.waitFor(3, TimeUnit.SECONDS)
+        out?.contains("ok") == true
     } catch (_: Exception) {
         false
     }
@@ -24,8 +29,7 @@ object Elevated {
     }
 
     fun shizukuPermissionGranted(): Boolean = try {
-        if (!shizukuAvailable()) false
-        else Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+        shizukuAvailable() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
     } catch (_: Throwable) {
         false
     }
@@ -38,8 +42,24 @@ object Elevated {
         }
     }
 
-    /** Shizuku.newProcess is not public on all API jars — invoke via reflection. */
-    private fun shizukuProcess(cmd: Array<String>): Process? {
+    /** Prefer calling once from Application/MainActivity. */
+    fun attachListeners(onChange: () -> Unit = {}) {
+        try {
+            Shizuku.addBinderReceivedListenerSticky {
+                Log.i(TAG, "Shizuku binder received")
+                onChange()
+            }
+            Shizuku.addBinderDeadListener {
+                Log.w(TAG, "Shizuku binder dead")
+                onChange()
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "attachListeners", e)
+        }
+    }
+
+    private fun resolveNewProcess(): Method? {
+        newProcessMethod.get()?.let { return it }
         return try {
             val m = Shizuku::class.java.getDeclaredMethod(
                 "newProcess",
@@ -48,42 +68,86 @@ object Elevated {
                 String::class.java,
             )
             m.isAccessible = true
-            @Suppress("UNCHECKED_CAST")
-            m.invoke(null, cmd, null, null) as? Process
+            newProcessMethod.set(m)
+            m
         } catch (e: Throwable) {
-            Log.w(TAG, "shizuku newProcess reflection", e)
+            Log.w(TAG, "resolve newProcess", e)
             null
         }
     }
 
+    private fun shizukuProcess(argv: Array<String>): Process? {
+        val m = resolveNewProcess() ?: return null
+        return try {
+            val p = m.invoke(null, argv, null, null)
+            when (p) {
+                is Process -> p
+                null -> null
+                else -> if (Process::class.java.isInstance(p)) p as Process else null
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "shizukuProcess", e)
+            null
+        }
+    }
+
+    private fun drain(p: Process, timeoutSec: Long): Pair<Int, String> {
+        val out = StringBuilder()
+        try {
+            p.inputStream.bufferedReader().use { out.append(it.readText()) }
+        } catch (_: Exception) { }
+        val ok = try {
+            p.waitFor(timeoutSec, TimeUnit.SECONDS)
+        } catch (_: Exception) {
+            false
+        }
+        if (!ok) {
+            p.destroy()
+            return -1 to out.toString().take(4000)
+        }
+        return p.exitValue() to out.toString().take(4000)
+    }
+
     fun runShell(cmd: String, preferShizuku: Boolean, allowSu: Boolean): Pair<Int, String> {
         if (preferShizuku && shizukuPermissionGranted()) {
-            val process = shizukuProcess(arrayOf("sh", "-c", cmd))
-            if (process != null) {
-                return try {
-                    val stdout = process.inputStream.bufferedReader().readText()
-                    process.waitFor() to stdout.take(4000)
-                } catch (e: Throwable) {
-                    Log.w(TAG, "shizuku shell", e)
-                    -1 to (e.message ?: "shizuku failed")
+            for (argv in listOf(
+                arrayOf("sh", "-c", cmd),
+                arrayOf("/system/bin/sh", "-c", cmd),
+            )) {
+                val p = shizukuProcess(argv)
+                if (p != null) {
+                    val r = drain(p, 15)
+                    if (r.first != -1 || r.second.isNotBlank()) return r
                 }
             }
         }
         if (allowSu && hasSu()) {
             try {
                 val p = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
-                val stdout = p.inputStream.bufferedReader().readText()
-                return p.waitFor() to stdout.take(4000)
+                return drain(p, 15)
             } catch (e: Exception) {
-                Log.w(TAG, "su shell failed", e)
+                Log.w(TAG, "su", e)
             }
         }
         return try {
             val p = Runtime.getRuntime().exec(arrayOf("sh", "-c", cmd))
-            val stdout = p.inputStream.bufferedReader().readText()
-            p.waitFor() to stdout.take(4000)
+            drain(p, 15)
         } catch (e: Exception) {
             -1 to (e.message ?: "exec failed")
         }
     }
+
+    /** Common elevated helpers used by actions. */
+    fun setAirplane(enable: Boolean, preferShizuku: Boolean, allowSu: Boolean) =
+        runShell(
+            if (enable) "settings put global airplane_mode_on 1; am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true"
+            else "settings put global airplane_mode_on 0; am broadcast -a android.intent.action.AIRPLANE_MODE --ez state false",
+            preferShizuku, allowSu,
+        )
+
+    fun setMobileData(enable: Boolean, preferShizuku: Boolean, allowSu: Boolean) =
+        runShell(if (enable) "svc data enable" else "svc data disable", preferShizuku, allowSu)
+
+    fun forceStop(packageName: String, preferShizuku: Boolean, allowSu: Boolean) =
+        runShell("am force-stop ${packageName.trim()}", preferShizuku, allowSu)
 }

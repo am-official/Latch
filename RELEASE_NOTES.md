@@ -1,14 +1,20 @@
-# Latch 0.3.1
+# Latch 0.4.0
 
-## Critical fix — rules actually run
-- Background **monitor service** keeps battery / Wi‑Fi / headset / screen receivers alive (previously only while the UI was open)
-- Battery rules fire on threshold cross **and** when a rule is saved / monitor starts (so “battery below 98%” works immediately)
-- Brightness sets **manual mode** first; clear error toast if “Modify system settings” is off
+## Reliability
+- **Single monitor path** — receivers only in `LatchMonitorService` (no double-fire with UI)
+- Battery matching via pure **RuleLogic** (unit-tested): cross threshold + force on save/start
+- Wi‑Fi events **debounced** (800ms)
+- Day-of-week trigger fixed (was never firing)
+- Brightness uses manual mode + clear errors
 
-## UX
-- Battery threshold **slider**
-- Brightness / volume / vibrate / wait **sliders**
-- Wi‑Fi SSID **dropdown** of known networks (+ manual type)
+## Shizuku
+- Cached `newProcess` reflection, `/system/bin/sh` fallback, process timeouts
+- Binder received/dead listeners
+- Elevated helpers: airplane, mobile data, force-stop package
 
-## Tip
-Enable **Modify system settings** in Settings for brightness rules. Leave at least one rule enabled so the monitor stays active.
+## New actions
+- Force-stop app · Mobile data · Airplane mode (via Shizuku/su)
+
+## Quality
+- JVM unit tests for RuleLogic (battery, SSID, time window, day bits, brightness)
+- Settings **Self-test** button

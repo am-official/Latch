@@ -434,6 +434,7 @@ private fun ActionEditor(
                 ActionType.OPEN_APP, ActionType.OPEN_URL, ActionType.SHELL,
                 ActionType.FLASHLIGHT, ActionType.WIFI_ENABLE,
                 ActionType.BLUETOOTH_ENABLE, ActionType.PLUGIN_BROADCAST,
+                ActionType.FORCE_STOP, ActionType.MOBILE_DATA, ActionType.AIRPLANE_MODE,
                 ->
                     OutlinedTextField(action.param, { onChange(action.copy(param = it)) },
                         label = { Text("Parameter") }, modifier = Modifier.fillMaxWidth())
@@ -565,6 +566,10 @@ private fun SettingsScreen(
                 logRuns,
             ) { logRuns = it; settings.logRuns = it }
 
+            OutlinedButton(
+                onClick = { onShowText("Self-test", RuleEngine.selfTest(context)) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Run self-test") }
             Button(
                 onClick = { onShowText("Export JSON", RuleStore(context).exportJson()) },
                 modifier = Modifier.fillMaxWidth(),

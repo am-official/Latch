@@ -30,6 +30,9 @@ enum class ActionType {
     WIFI_ENABLE,          // param true/false (best-effort)
     BLUETOOTH_ENABLE,
     SKIP_TO_NEXT,         // media next
+    FORCE_STOP,           // elevated am force-stop
+    MOBILE_DATA,          // svc data
+    AIRPLANE_MODE,        // settings + broadcast
 }
 
 enum class RingerModeKind { NORMAL, VIBRATE, SILENT }
@@ -73,6 +76,9 @@ data class RuleAction(
         ActionType.WIFI_ENABLE -> "Wi‑Fi ${param.ifBlank { "toggle" }}"
         ActionType.BLUETOOTH_ENABLE -> "BT ${param.ifBlank { "toggle" }}"
         ActionType.SKIP_TO_NEXT -> "Media next"
+        ActionType.FORCE_STOP -> "Force-stop ${param.ifBlank { "?" }}"
+        ActionType.MOBILE_DATA -> "Data ${param.ifBlank { "toggle" }}"
+        ActionType.AIRPLANE_MODE -> "Airplane ${param.ifBlank { "on" }}"
     }
 
     fun toJson() = JSONObject()

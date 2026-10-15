@@ -12,10 +12,10 @@ android {
         applicationId = "com.endroid.latch"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.3.1"
+        versionCode = 5
+        versionName = "0.4.0"
         resourceConfigurations += listOf("en")
-        buildConfigField("String", "VERSION_NAME", "\"0.3.1\"")
+        buildConfigField("String", "VERSION_NAME", "\"0.4.0\"")
     }
 
     val releaseStoreFile = System.getenv("RELEASE_STORE_FILE")
@@ -95,4 +95,6 @@ dependencies {
     implementation("dev.rikka.shizuku:api:13.1.5")
     implementation("dev.rikka.shizuku:provider:13.1.5")
     debugImplementation(libs.androidx.ui.tooling)
+    testImplementation("junit:junit:4.13.2")
 }
+

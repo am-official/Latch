@@ -79,13 +79,16 @@ class ConnectivityReceiver : BroadcastReceiver() {
                 // edge detection via prefs
                 val prefs = app.getSharedPreferences("latch_net", Context.MODE_PRIVATE)
                 val was = prefs.getBoolean("wifi", false)
+                val now = System.currentTimeMillis()
+                val lastTs = prefs.getLong("wifi_ts", 0L)
+                if (now - lastTs < 800L) return
                 if (wifi != was) {
-                    prefs.edit().putBoolean("wifi", wifi).apply()
+                    prefs.edit().putBoolean("wifi", wifi).putLong("wifi_ts", now).apply()
                     RuleEngine.onWifi(app, wifi, ssid)
                 } else if (wifi && !ssid.isNullOrBlank()) {
                     val lastSsid = prefs.getString("ssid", null)
                     if (ssid != lastSsid) {
-                        prefs.edit().putString("ssid", ssid).apply()
+                        prefs.edit().putString("ssid", ssid).putLong("wifi_ts", now).apply()
                         RuleEngine.onWifi(app, true, ssid)
                     }
                 }

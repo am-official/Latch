@@ -56,6 +56,11 @@ jobs:
             echo "Secrets missing — debug signing fallback."
           fi
 
+      - name: Unit tests
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest --stacktrace
+
       - name: Build release APK
         env:
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
