@@ -2,6 +2,7 @@ package com.endroid.latch.data
 
 import android.content.Context
 import org.json.JSONArray
+import com.endroid.latch.engine.AppWatchService
 import com.endroid.latch.engine.TimeScheduler
 import java.io.File
 
@@ -29,6 +30,7 @@ class RuleStore(private val context: Context) {
         rules.forEach { arr.put(it.toJson()) }
         file.writeText(arr.toString())
         TimeScheduler.rescheduleAll(context)
+        AppWatchService.refresh(context)
     }
 
     fun upsert(rule: Rule) {

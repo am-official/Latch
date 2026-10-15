@@ -5,47 +5,37 @@
 
 **Privacy-first Android automation** — local *if → then* rules. No account, no cloud, no ads, no trackers.
 
-A FOSS alternative spirit to Tasker: triggers and actions that run **only on your device**.
-
 **Site:** https://wized2.github.io/Latch/ · **Releases:** https://github.com/wized2/Latch/releases
 
-## Features (0.1)
+## Features
 
-| Triggers | Actions |
-|----------|---------|
-| Battery below / above % | Notification |
-| Charger connected / disconnected | Ringer mode (normal / vibrate / silent) |
-| Headphones plug / unplug | Toast |
-| Daily time (exact alarm) | |
-| Boot completed | |
+### Triggers
+Battery · charger · headphones · daily time · boot · **Wi‑Fi** · **SSID** · **Bluetooth** · **app opened** · screen · **custom broadcast**
 
-- Material You (dynamic color on Android 12+)
-- Rules stored as on-device JSON; **export** for backup
-- Optional exact alarms for daily schedules
+### Actions (chainable)
+Notify · toast · ringer · **open app** · **open URL** · **brightness** · **shell** (optional root) · wait · **plugin broadcast**
+
+### Other
+- Multi-step action lists per rule
+- Cooldown + notes
+- Home-screen **widget** (toggle rule)
+- **Plugin API** for other FOSS apps
+- JSON export of recipes
+- Material You
 
 ## Privacy
+No `INTERNET` permission. No analytics. Rules stay on device unless you export them.
 
-- No network permission
-- No analytics SDKs
-- No accounts
-- Recipes never leave the phone unless **you** export them
+## Plugin API
+```text
+com.endroid.latch.api.FIRE_TRIGGER   extra trigger=<string>
+com.endroid.latch.api.RUN_RULE       extra rule_id=<uuid>
+```
 
 ## Build
-
 ```bash
 ./gradlew assembleRelease
 ```
 
-JDK 17. Release signing uses `RELEASE_*` env secrets (same pattern as Fern).
-
-## Roadmap
-
-- Wi‑Fi / Bluetooth / app-opened triggers (with clear permission UX)
-- Multi-action rules & conditions (AND)
-- Widget to toggle a rule
-- Plugin API for other FOSS apps
-- Optional Shizuku / root actions
-
 ## License
-
 MIT · Project Endroid

@@ -1,12 +1,18 @@
 package com.endroid.latch
 
+import android.bluetooth.BluetoothDevice
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.ConnectivityManager
+import android.net.wifi.WifiManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.content.ContextCompat
+import com.endroid.latch.engine.AppWatchService
+import com.endroid.latch.engine.TimeScheduler
+import com.endroid.latch.receiver.ConnectivityReceiver
 import com.endroid.latch.receiver.HeadsetReceiver
 import com.endroid.latch.receiver.PowerReceiver
 import com.endroid.latch.receiver.TimeTickReceiver
@@ -17,15 +23,16 @@ class MainActivity : ComponentActivity() {
     private val powerReceiver = PowerReceiver()
     private val headsetReceiver = HeadsetReceiver()
     private val timeTickReceiver = TimeTickReceiver()
+    private val connectivityReceiver = ConnectivityReceiver()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         registerRuntimeReceivers()
+        TimeScheduler.rescheduleAll(this)
+        AppWatchService.refresh(this)
         setContent {
-            LatchTheme {
-                LatchApp()
-            }
+            LatchTheme { LatchApp() }
         }
     }
 
@@ -37,29 +44,36 @@ class MainActivity : ComponentActivity() {
             addAction(Intent.ACTION_BATTERY_LOW)
             addAction(Intent.ACTION_BATTERY_OKAY)
         }
+        ContextCompat.registerReceiver(this, powerReceiver, powerFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
+
         ContextCompat.registerReceiver(
-            this, powerReceiver, powerFilter, ContextCompat.RECEIVER_NOT_EXPORTED,
-        )
-        ContextCompat.registerReceiver(
-            this,
-            headsetReceiver,
-            IntentFilter(Intent.ACTION_HEADSET_PLUG),
+            this, headsetReceiver, IntentFilter(Intent.ACTION_HEADSET_PLUG),
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
+
         val timeFilter = IntentFilter().apply {
             addAction(Intent.ACTION_TIME_TICK)
             addAction(Intent.ACTION_TIME_CHANGED)
             addAction(Intent.ACTION_TIMEZONE_CHANGED)
         }
-        ContextCompat.registerReceiver(
-            this, timeTickReceiver, timeFilter, ContextCompat.RECEIVER_NOT_EXPORTED,
-        )
+        ContextCompat.registerReceiver(this, timeTickReceiver, timeFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
+
+        val netFilter = IntentFilter().apply {
+            addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION)
+            addAction(ConnectivityManager.CONNECTIVITY_ACTION)
+            addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
+            addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
+        }
+        ContextCompat.registerReceiver(this, connectivityReceiver, netFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
     }
 
     override fun onDestroy() {
         runCatching { unregisterReceiver(powerReceiver) }
         runCatching { unregisterReceiver(headsetReceiver) }
         runCatching { unregisterReceiver(timeTickReceiver) }
+        runCatching { unregisterReceiver(connectivityReceiver) }
         super.onDestroy()
     }
 }

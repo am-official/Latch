@@ -3,4 +3,10 @@
     <string name="app_name">Latch</string>
     <string name="channel_actions">Rule actions</string>
     <string name="channel_actions_desc">Notifications created by your Latch rules</string>
+    <string name="app_watch_title">Latch app watch</string>
+    <string name="app_watch_text">Watching foreground apps for rules</string>
+    <string name="widget_label">Latch rule toggle</string>
+    <string name="widget_pick">Tap to configure</string>
+    <string name="widget_on">ON — tap to disable</string>
+    <string name="widget_off">OFF — tap to enable</string>
 </resources>
