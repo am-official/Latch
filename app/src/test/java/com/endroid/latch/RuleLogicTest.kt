@@ -81,6 +81,6 @@ class RuleLogicTest {
     @Test fun brightnessRaw() {
         assertEquals(1, RuleLogic.brightnessRaw(0))
         assertEquals(255, RuleLogic.brightnessRaw(100))
-        assertTrue(RuleLogic.brightnessRaw(30) in 70..80)
+        assertEquals(76, RuleLogic.brightnessRaw(30))
     }
 }

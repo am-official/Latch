@@ -46,5 +46,9 @@ object RuleLogic {
     }
 
     fun clampPercent(v: Int): Int = v.coerceIn(0, 100)
-    fun brightnessRaw(percent: Int): Int = (clampPercent(percent).coerceAtLeast(1) / 100f * 255).toInt().coerceIn(1, 255)
+    fun brightnessRaw(percent: Int): Int {
+        val p = clampPercent(percent)
+        if (p <= 0) return 1
+        return (p * 255 / 100).coerceIn(1, 255)
+    }
 }
