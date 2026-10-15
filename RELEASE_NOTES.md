@@ -1,24 +1,14 @@
-# Latch 0.3.0
+# Latch 0.3.1
 
-## Permissions settings
-Each capability shows **Enabled** or an **Enable** button (notifications, usage access, write settings, exact alarms, Bluetooth, location/SSID, Shizuku, root).
-
-## Elevated execution
-- **Shizuku** preferred for shell when authorized
-- **Root (su)** optional fallback
-- Wi‑Fi / Bluetooth enable actions via elevated `svc` when possible
-
-## Conditions (AND)
-Also require: Wi‑Fi on/off, charging, screen, battery threshold, weekday/weekend.
-
-## More triggers
-Airplane mode · media mounted · time window · day mask
-
-## More actions
-Media volume · vibrate · clipboard · flashlight · Wi‑Fi/BT enable · media next · multi-step chains
+## Critical fix — rules actually run
+- Background **monitor service** keeps battery / Wi‑Fi / headset / screen receivers alive (previously only while the UI was open)
+- Battery rules fire on threshold cross **and** when a rule is saved / monitor starts (so “battery below 98%” works immediately)
+- Brightness sets **manual mode** first; clear error toast if “Modify system settings” is off
 
 ## UX
-- Run rule now (play) on each card
-- Import / export JSON
-- On-device run log
-- Tags + notes + cooldown
+- Battery threshold **slider**
+- Brightness / volume / vibrate / wait **sliders**
+- Wi‑Fi SSID **dropdown** of known networks (+ manual type)
+
+## Tip
+Enable **Modify system settings** in Settings for brightness rules. Leave at least one rule enabled so the monitor stays active.

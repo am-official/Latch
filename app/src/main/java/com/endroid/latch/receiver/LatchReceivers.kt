@@ -11,6 +11,7 @@ import android.net.wifi.WifiManager
 import android.os.BatteryManager
 import android.os.Build
 import com.endroid.latch.data.RuleStore
+import com.endroid.latch.engine.LatchMonitorService
 import com.endroid.latch.engine.RuleEngine
 import com.endroid.latch.engine.TimeScheduler
 import com.endroid.latch.widget.LatchWidgetProvider
@@ -25,6 +26,7 @@ class BootReceiver : BroadcastReceiver() {
             RuleEngine.onBoot(app)
             TimeScheduler.rescheduleAll(app)
             com.endroid.latch.engine.AppWatchService.refresh(app)
+            LatchMonitorService.refresh(app)
         }
     }
 }

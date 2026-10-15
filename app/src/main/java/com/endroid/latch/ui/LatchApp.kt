@@ -44,6 +44,7 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -74,6 +75,7 @@ import com.endroid.latch.engine.AppWatchService
 import com.endroid.latch.engine.Elevated
 import com.endroid.latch.engine.PermissionStatus
 import com.endroid.latch.engine.RuleEngine
+import com.endroid.latch.engine.WifiHelper
 import java.util.UUID
 
 private sealed class Screen {
@@ -259,8 +261,15 @@ private fun EditRuleScreen(initial: Rule?, onBack: () -> Unit, onSave: (Rule) ->
                 modifier = Modifier.fillMaxWidth(), singleLine = true)
             EnumDropdown("When", TriggerType.entries, trigger) { trigger = it }
             when (trigger) {
-                TriggerType.BATTERY_BELOW, TriggerType.BATTERY_ABOVE ->
-                    IntField("Battery %", value) { value = it.coerceIn(1, 100) }
+                TriggerType.BATTERY_BELOW, TriggerType.BATTERY_ABOVE -> {
+                    Text("Battery threshold: $value%", style = MaterialTheme.typography.labelLarge)
+                    Slider(
+                        value = value.toFloat(),
+                        onValueChange = { value = it.toInt().coerceIn(1, 100) },
+                        valueRange = 1f..100f,
+                        steps = 98,
+                    )
+                }
                 TriggerType.TIME_DAILY -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     IntField("Hour", value, Modifier.weight(1f)) { value = it.coerceIn(0, 23) }
                     IntField("Minute", value2, Modifier.weight(1f)) { value2 = it.coerceIn(0, 59) }
@@ -274,16 +283,31 @@ private fun EditRuleScreen(initial: Rule?, onBack: () -> Unit, onSave: (Rule) ->
                         label = { Text("End HH:MM") }, placeholder = { Text("22:00") },
                         modifier = Modifier.fillMaxWidth(), singleLine = true)
                 }
-                TriggerType.WIFI_SSID, TriggerType.APP_OPENED, TriggerType.CUSTOM_BROADCAST ->
+                TriggerType.WIFI_SSID -> {
+                    val ctx = LocalContext.current
+                    val ssids = remember { WifiHelper.knownSsids(ctx) }
+                    if (ssids.isNotEmpty()) {
+                        EnumStringDropdown("Wi‑Fi network", ssids, triggerParam.ifBlank { ssids.first() }) {
+                            triggerParam = it
+                        }
+                    }
+                    OutlinedTextField(
+                        triggerParam, { triggerParam = it },
+                        label = { Text("SSID (pick above or type)") },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true,
+                    )
+                    if (!WifiHelper.hasLocation(ctx)) {
+                        Text(
+                            "Location permission helps list SSIDs on Android 8+",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+                TriggerType.APP_OPENED, TriggerType.CUSTOM_BROADCAST ->
                     OutlinedTextField(triggerParam, { triggerParam = it },
                         label = {
-                            Text(
-                                when (trigger) {
-                                    TriggerType.WIFI_SSID -> "SSID"
-                                    TriggerType.APP_OPENED -> "Package name"
-                                    else -> "Broadcast action"
-                                },
-                            )
+                            Text(if (trigger == TriggerType.APP_OPENED) "Package name" else "Broadcast action")
                         },
                         modifier = Modifier.fillMaxWidth(), singleLine = true)
                 TriggerType.DAY_OF_WEEK ->
@@ -369,9 +393,46 @@ private fun ActionEditor(
                     EnumDropdown("Mode", RingerModeKind.entries, action.ringerMode) {
                         onChange(action.copy(ringerMode = it))
                     }
+                ActionType.SET_BRIGHTNESS -> {
+                    val v = action.param.toIntOrNull()?.coerceIn(1, 100) ?: 50
+                    Text("Brightness: $v%", style = MaterialTheme.typography.labelLarge)
+                    Slider(
+                        value = v.toFloat(),
+                        onValueChange = { onChange(action.copy(param = it.toInt().coerceIn(1, 100).toString())) },
+                        valueRange = 1f..100f,
+                        steps = 98,
+                    )
+                }
+                ActionType.MEDIA_VOLUME -> {
+                    val v = action.param.toIntOrNull()?.coerceIn(0, 100) ?: 50
+                    Text("Media volume: $v%", style = MaterialTheme.typography.labelLarge)
+                    Slider(
+                        value = v.toFloat(),
+                        onValueChange = { onChange(action.copy(param = it.toInt().coerceIn(0, 100).toString())) },
+                        valueRange = 0f..100f,
+                        steps = 99,
+                    )
+                }
+                ActionType.VIBRATE -> {
+                    val v = action.param.toIntOrNull()?.coerceIn(50, 2000) ?: 200
+                    Text("Vibrate: ${v}ms", style = MaterialTheme.typography.labelLarge)
+                    Slider(
+                        value = v.toFloat(),
+                        onValueChange = { onChange(action.copy(param = it.toInt().coerceIn(50, 2000).toString())) },
+                        valueRange = 50f..2000f,
+                    )
+                }
+                ActionType.WAIT_MS -> {
+                    val v = action.param.toIntOrNull()?.coerceIn(0, 10000) ?: 500
+                    Text("Wait: ${v}ms", style = MaterialTheme.typography.labelLarge)
+                    Slider(
+                        value = v.toFloat(),
+                        onValueChange = { onChange(action.copy(param = it.toInt().coerceIn(0, 10000).toString())) },
+                        valueRange = 0f..10000f,
+                    )
+                }
                 ActionType.OPEN_APP, ActionType.OPEN_URL, ActionType.SHELL,
-                ActionType.SET_BRIGHTNESS, ActionType.WAIT_MS, ActionType.MEDIA_VOLUME,
-                ActionType.VIBRATE, ActionType.FLASHLIGHT, ActionType.WIFI_ENABLE,
+                ActionType.FLASHLIGHT, ActionType.WIFI_ENABLE,
                 ActionType.BLUETOOTH_ENABLE, ActionType.PLUGIN_BROADCAST,
                 ->
                     OutlinedTextField(action.param, { onChange(action.copy(param = it)) },

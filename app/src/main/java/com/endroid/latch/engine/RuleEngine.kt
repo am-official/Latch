@@ -57,17 +57,62 @@ object RuleEngine {
     private fun eligible(context: Context, rule: Rule): Boolean =
         rule.enabled && Conditions.holds(context, rule) && cooldownOk(context, rule)
 
-    fun onBattery(context: Context, percent: Int) {
+    /**
+     * Battery rules fire when threshold is crossed, or when [force] (monitor start / rule save).
+     * Per-rule last-fired state avoids spam while still reacting when the condition becomes true.
+     */
+    fun onBattery(context: Context, percent: Int, force: Boolean = false) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val bucket = percent / 5
-        if (prefs.getInt("bat_bucket", -1) == bucket) return
-        prefs.edit().putInt("bat_bucket", bucket).apply()
-        match(context) {
-            when (it.trigger) {
-                TriggerType.BATTERY_BELOW -> percent <= it.triggerValue
-                TriggerType.BATTERY_ABOVE -> percent >= it.triggerValue
+        val prev = prefs.getInt("bat_pct", -1)
+        prefs.edit().putInt("bat_pct", percent).apply()
+
+        RuleStore(context).load().filter { it.enabled }.forEach { rule ->
+            val match = when (rule.trigger) {
+                TriggerType.BATTERY_BELOW -> percent <= rule.triggerValue
+                TriggerType.BATTERY_ABOVE -> percent >= rule.triggerValue
+                else -> return@forEach
+            }
+            if (!match) {
+                // clear latched state so next cross can fire
+                prefs.edit().putBoolean("bat_latched_${rule.id}", false).apply()
+                return@forEach
+            }
+            val latched = prefs.getBoolean("bat_latched_${rule.id}", false)
+            val crossed = when (rule.trigger) {
+                TriggerType.BATTERY_BELOW -> prev < 0 || prev > rule.triggerValue
+                TriggerType.BATTERY_ABOVE -> prev < 0 || prev < rule.triggerValue
                 else -> false
             }
+            if (force || crossed || !latched) {
+                if (!Conditions.holds(context, rule)) return@forEach
+                if (!cooldownOk(context, rule)) return@forEach
+                prefs.edit().putBoolean("bat_latched_${rule.id}", true).apply()
+                run(context, rule)
+            }
+        }
+    }
+
+    /** Call after saving rules so current device state can satisfy triggers immediately. */
+    fun evaluateCurrentState(context: Context) {
+        val pct = com.endroid.latch.receiver.PowerReceiver.batteryPercent(context, null)
+        if (pct >= 0) onBattery(context, pct, force = true)
+        // wifi snapshot
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val wifi = if (android.os.Build.VERSION.SDK_INT >= 23) {
+            val net = cm.activeNetwork
+            val caps = net?.let { cm.getNetworkCapabilities(it) }
+            caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true
+        } else {
+            @Suppress("DEPRECATION")
+            cm.activeNetworkInfo?.type == android.net.ConnectivityManager.TYPE_WIFI
+        }
+        if (wifi) {
+            val ssid = try {
+                val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+                @Suppress("DEPRECATION")
+                wm.connectionInfo?.ssid?.trim('"')
+            } catch (_: Exception) { null }
+            onWifi(context, true, ssid)
         }
     }
 
@@ -224,13 +269,32 @@ object RuleEngine {
                 }
             }
             ActionType.SET_BRIGHTNESS -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.System.canWrite(context)) return
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.System.canWrite(context)) {
+                    Log.w(TAG, "SET_BRIGHTNESS blocked: WRITE_SETTINGS not granted")
+                    SettingsStore(context).appendLog("ERR brightness: enable Modify system settings")
+                    android.os.Handler(context.mainLooper).post {
+                        Toast.makeText(context, "Enable Modify system settings for brightness", Toast.LENGTH_LONG).show()
+                    }
+                    return
+                }
                 val pct = action.param.toIntOrNull()?.coerceIn(1, 100) ?: return
-                Settings.System.putInt(
-                    context.contentResolver,
-                    Settings.System.SCREEN_BRIGHTNESS,
-                    (pct / 100f * 255).toInt().coerceIn(1, 255),
-                )
+                val raw = (pct / 100f * 255).toInt().coerceIn(1, 255)
+                try {
+                    Settings.System.putInt(
+                        context.contentResolver,
+                        Settings.System.SCREEN_BRIGHTNESS_MODE,
+                        Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL,
+                    )
+                    Settings.System.putInt(
+                        context.contentResolver,
+                        Settings.System.SCREEN_BRIGHTNESS,
+                        raw,
+                    )
+                    SettingsStore(context).appendLog("brightness → $pct%")
+                } catch (e: Exception) {
+                    Log.w(TAG, "brightness failed", e)
+                    SettingsStore(context).appendLog("ERR brightness: ${e.message}")
+                }
             }
             ActionType.SHELL -> {
                 val cmd = action.param.trim().ifBlank { action.text.trim() }

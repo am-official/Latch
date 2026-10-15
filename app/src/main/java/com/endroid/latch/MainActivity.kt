@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.content.ContextCompat
 import com.endroid.latch.engine.AppWatchService
+import com.endroid.latch.engine.LatchMonitorService
 import com.endroid.latch.engine.TimeScheduler
 import com.endroid.latch.receiver.ConnectivityReceiver
 import com.endroid.latch.receiver.HeadsetReceiver
@@ -32,6 +33,7 @@ class MainActivity : ComponentActivity() {
         registerRuntimeReceivers()
         TimeScheduler.rescheduleAll(this)
         AppWatchService.refresh(this)
+        LatchMonitorService.refresh(this)
         try {
             if (Shizuku.pingBinder() && Shizuku.checkSelfPermission() != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 // user enables from Settings

@@ -80,6 +80,15 @@
         </receiver>
 
         <service
+            android:name=".engine.LatchMonitorService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keep automation triggers listening while rules are enabled" />
+        </service>
+
+        <service
             android:name=".engine.AppWatchService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
