@@ -89,6 +89,29 @@ object RuleEngine {
             run(context, rule)
         }
     }
+
+    fun evaluateCurrentState(context: Context) {
+        val pct = com.endroid.latch.receiver.PowerReceiver.batteryPercent(context, null)
+        if (pct >= 0) onBattery(context, pct, force = true)
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val wifi = if (android.os.Build.VERSION.SDK_INT >= 23) {
+            val net = cm.activeNetwork
+            val caps = net?.let { cm.getNetworkCapabilities(it) }
+            caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true
+        } else {
+            @Suppress("DEPRECATION")
+            cm.activeNetworkInfo?.type == android.net.ConnectivityManager.TYPE_WIFI
+        }
+        if (wifi) {
+            val ssid = try {
+                val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+                @Suppress("DEPRECATION")
+                wm.connectionInfo?.ssid?.trim('"')
+            } catch (_: Exception) { null }
+            onWifi(context, true, ssid)
+        }
+    }
+
     fun onPowerConnected(context: Context, connected: Boolean) =
         fire(context, if (connected) TriggerType.CHARGER_CONNECTED else TriggerType.CHARGER_DISCONNECTED)
 
