@@ -12,10 +12,10 @@ android {
         applicationId = "com.endroid.latch"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
         resourceConfigurations += listOf("en")
-        buildConfigField("String", "VERSION_NAME", "\"0.1.0\"")
+        buildConfigField("String", "VERSION_NAME", "\"0.3.0\"")
     }
 
     val releaseStoreFile = System.getenv("RELEASE_STORE_FILE")
@@ -92,5 +92,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.core)
     implementation(libs.androidx.datastore.preferences)
+    implementation("dev.rikka.shizuku:api:13.1.5")
+    implementation("dev.rikka.shizuku:provider:13.1.5")
     debugImplementation(libs.androidx.ui.tooling)
 }

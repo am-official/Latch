@@ -94,6 +94,11 @@ class ConnectivityReceiver : BroadcastReceiver() {
                 RuleEngine.onBluetooth(app, false)
             Intent.ACTION_SCREEN_ON -> RuleEngine.onScreen(app, true)
             Intent.ACTION_SCREEN_OFF -> RuleEngine.onScreen(app, false)
+            Intent.ACTION_AIRPLANE_MODE_CHANGED -> {
+                val on = intent.getBooleanExtra("state", false)
+                RuleEngine.onAirplane(app, on)
+            }
+            Intent.ACTION_MEDIA_MOUNTED -> RuleEngine.onMediaMounted(app)
         }
     }
 

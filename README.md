@@ -23,6 +23,9 @@ Notify · toast · ringer · **open app** · **open URL** · **brightness** · *
 - JSON export of recipes
 - Material You
 
+## Elevated
+Shizuku (preferred) and optional root `su` for shell / svc actions.
+
 ## Privacy
 No `INTERNET` permission. No analytics. Rules stay on device unless you export them.
 

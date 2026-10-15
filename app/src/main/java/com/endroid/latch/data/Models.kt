@@ -5,74 +5,86 @@ import org.json.JSONObject
 import java.util.UUID
 
 enum class TriggerType {
-    BATTERY_BELOW,
-    BATTERY_ABOVE,
-    CHARGER_CONNECTED,
-    CHARGER_DISCONNECTED,
-    HEADPHONES_CONNECTED,
-    HEADPHONES_DISCONNECTED,
-    BOOT_COMPLETED,
-    TIME_DAILY,
-    WIFI_CONNECTED,
-    WIFI_DISCONNECTED,
-    WIFI_SSID,          // connected to SSID matching triggerParam
-    BLUETOOTH_CONNECTED,
-    BLUETOOTH_DISCONNECTED,
-    APP_OPENED,         // usage-stats based poll
-    SCREEN_ON,
-    SCREEN_OFF,
-    CUSTOM_BROADCAST,   // plugin / external intent with action = triggerParam
+    BATTERY_BELOW, BATTERY_ABOVE,
+    CHARGER_CONNECTED, CHARGER_DISCONNECTED,
+    HEADPHONES_CONNECTED, HEADPHONES_DISCONNECTED,
+    BOOT_COMPLETED, TIME_DAILY,
+    WIFI_CONNECTED, WIFI_DISCONNECTED, WIFI_SSID,
+    BLUETOOTH_CONNECTED, BLUETOOTH_DISCONNECTED,
+    APP_OPENED, SCREEN_ON, SCREEN_OFF,
+    CUSTOM_BROADCAST,
+    AIRPLANE_ON, AIRPLANE_OFF,
+    MEDIA_MOUNTED,
+    TIME_WINDOW,          // active between HH:MM and HH:MM (checked on events)
+    DAY_OF_WEEK,          // triggerValue bitmask Sun=1 Mon=2 ...
 }
 
 enum class ActionType {
-    NOTIFY,
-    RINGER_MODE,
-    TOAST,
-    OPEN_APP,
-    OPEN_URL,
-    SET_BRIGHTNESS,     // 0-100 needs WRITE_SETTINGS
-    SHELL,              // optional elevated via su if enabled
-    WAIT_MS,            // delay before next action in chain
-    PLUGIN_BROADCAST,   // send broadcast for other apps
+    NOTIFY, RINGER_MODE, TOAST,
+    OPEN_APP, OPEN_URL, SET_BRIGHTNESS,
+    SHELL, WAIT_MS, PLUGIN_BROADCAST,
+    MEDIA_VOLUME,         // 0-100
+    VIBRATE,              // duration ms in param
+    CLIPBOARD,            // text
+    FLASHLIGHT,           // on/off in param
+    WIFI_ENABLE,          // param true/false (best-effort)
+    BLUETOOTH_ENABLE,
+    SKIP_TO_NEXT,         // media next
 }
 
 enum class RingerModeKind { NORMAL, VIBRATE, SILENT }
+
+/** Extra condition that must also hold (AND). */
+enum class ConditionType {
+    NONE,
+    WIFI_ON,
+    WIFI_OFF,
+    CHARGING,
+    NOT_CHARGING,
+    SCREEN_ON,
+    SCREEN_OFF,
+    BATTERY_BELOW,
+    BATTERY_ABOVE,
+    DAY_WEEKDAY,
+    DAY_WEEKEND,
+}
 
 data class RuleAction(
     val type: ActionType,
     val text: String = "",
     val title: String = "",
     val ringerMode: RingerModeKind = RingerModeKind.NORMAL,
-    /** package name, URL, shell cmd, brightness, wait ms, plugin action */
     val param: String = "",
 ) {
     fun summary(): String = when (type) {
         ActionType.NOTIFY -> "Notify: ${title.ifBlank { text }.ifBlank { "…" }}"
         ActionType.RINGER_MODE -> "Ringer → ${ringerMode.name.lowercase()}"
         ActionType.TOAST -> "Toast: ${text.ifBlank { "…" }}"
-        ActionType.OPEN_APP -> "Open app: ${param.ifBlank { "?" }}"
-        ActionType.OPEN_URL -> "Open URL"
-        ActionType.SET_BRIGHTNESS -> "Brightness ${param.ifBlank { "?" }}%"
-        ActionType.SHELL -> "Shell: ${param.take(32)}${if (param.length > 32) "…" else ""}"
-        ActionType.WAIT_MS -> "Wait ${param.ifBlank { "0" }} ms"
-        ActionType.PLUGIN_BROADCAST -> "Plugin: ${param.ifBlank { text }}"
+        ActionType.OPEN_APP -> "Open: ${param.ifBlank { "?" }}"
+        ActionType.OPEN_URL -> "URL"
+        ActionType.SET_BRIGHTNESS -> "Brightness ${param}%"
+        ActionType.SHELL -> "Shell: ${param.take(28)}"
+        ActionType.WAIT_MS -> "Wait ${param}ms"
+        ActionType.PLUGIN_BROADCAST -> "Plugin out"
+        ActionType.MEDIA_VOLUME -> "Media vol ${param}%"
+        ActionType.VIBRATE -> "Vibrate ${param}ms"
+        ActionType.CLIPBOARD -> "Clipboard"
+        ActionType.FLASHLIGHT -> "Flash ${param.ifBlank { "on" }}"
+        ActionType.WIFI_ENABLE -> "Wi‑Fi ${param.ifBlank { "toggle" }}"
+        ActionType.BLUETOOTH_ENABLE -> "BT ${param.ifBlank { "toggle" }}"
+        ActionType.SKIP_TO_NEXT -> "Media next"
     }
 
-    fun toJson(): JSONObject = JSONObject()
-        .put("type", type.name)
-        .put("text", text)
-        .put("title", title)
-        .put("ringerMode", ringerMode.name)
-        .put("param", param)
+    fun toJson() = JSONObject()
+        .put("type", type.name).put("text", text).put("title", title)
+        .put("ringerMode", ringerMode.name).put("param", param)
 
     companion object {
-        fun fromJson(o: JSONObject): RuleAction = RuleAction(
+        fun fromJson(o: JSONObject) = RuleAction(
             type = ActionType.valueOf(o.getString("type")),
-            text = o.optString("text"),
-            title = o.optString("title"),
-            ringerMode = runCatching {
-                RingerModeKind.valueOf(o.optString("ringerMode", "NORMAL"))
-            }.getOrDefault(RingerModeKind.NORMAL),
+            text = o.optString("text"), title = o.optString("title"),
+            ringerMode = runCatching { RingerModeKind.valueOf(o.optString("ringerMode", "NORMAL")) }
+                .getOrDefault(RingerModeKind.NORMAL),
             param = o.optString("param"),
         )
     }
@@ -85,44 +97,54 @@ data class Rule(
     val trigger: TriggerType,
     val triggerValue: Int = 20,
     val triggerValue2: Int = 0,
-    /** SSID, package name, BT name, custom broadcast action */
     val triggerParam: String = "",
+    val condition: ConditionType = ConditionType.NONE,
+    val conditionValue: Int = 0,
     val actions: List<RuleAction> = emptyList(),
-    /** Minimum seconds between runs of this rule (0 = every match) */
     val cooldownSec: Int = 0,
     val notes: String = "",
+    val tag: String = "",
 ) {
-    fun triggerSummary(): String = when (trigger) {
-        TriggerType.BATTERY_BELOW -> "Battery below $triggerValue%"
-        TriggerType.BATTERY_ABOVE -> "Battery above $triggerValue%"
-        TriggerType.CHARGER_CONNECTED -> "Charger connected"
-        TriggerType.CHARGER_DISCONNECTED -> "Charger disconnected"
-        TriggerType.HEADPHONES_CONNECTED -> "Headphones connected"
-        TriggerType.HEADPHONES_DISCONNECTED -> "Headphones disconnected"
-        TriggerType.BOOT_COMPLETED -> "Device boot"
-        TriggerType.TIME_DAILY -> "Daily at %02d:%02d".format(triggerValue, triggerValue2)
-        TriggerType.WIFI_CONNECTED -> "Wi‑Fi connected"
-        TriggerType.WIFI_DISCONNECTED -> "Wi‑Fi disconnected"
-        TriggerType.WIFI_SSID -> "Wi‑Fi SSID: ${triggerParam.ifBlank { "any" }}"
-        TriggerType.BLUETOOTH_CONNECTED -> "Bluetooth connected"
-        TriggerType.BLUETOOTH_DISCONNECTED -> "Bluetooth disconnected"
-        TriggerType.APP_OPENED -> "App opened: ${triggerParam.ifBlank { "?" }}"
-        TriggerType.SCREEN_ON -> "Screen on"
-        TriggerType.SCREEN_OFF -> "Screen off"
-        TriggerType.CUSTOM_BROADCAST -> "Broadcast: ${triggerParam.ifBlank { "?" }}"
+    fun triggerSummary(): String {
+        val base = when (trigger) {
+            TriggerType.BATTERY_BELOW -> "Battery ≤ $triggerValue%"
+            TriggerType.BATTERY_ABOVE -> "Battery ≥ $triggerValue%"
+            TriggerType.CHARGER_CONNECTED -> "Charger in"
+            TriggerType.CHARGER_DISCONNECTED -> "Charger out"
+            TriggerType.HEADPHONES_CONNECTED -> "Headphones in"
+            TriggerType.HEADPHONES_DISCONNECTED -> "Headphones out"
+            TriggerType.BOOT_COMPLETED -> "Boot"
+            TriggerType.TIME_DAILY -> "%02d:%02d daily".format(triggerValue, triggerValue2)
+            TriggerType.WIFI_CONNECTED -> "Wi‑Fi on"
+            TriggerType.WIFI_DISCONNECTED -> "Wi‑Fi off"
+            TriggerType.WIFI_SSID -> "SSID ${triggerParam.ifBlank { "?" }}"
+            TriggerType.BLUETOOTH_CONNECTED -> "BT connected"
+            TriggerType.BLUETOOTH_DISCONNECTED -> "BT disconnected"
+            TriggerType.APP_OPENED -> "App ${triggerParam.ifBlank { "?" }}"
+            TriggerType.SCREEN_ON -> "Screen on"
+            TriggerType.SCREEN_OFF -> "Screen off"
+            TriggerType.CUSTOM_BROADCAST -> "Broadcast ${triggerParam.ifBlank { "?" }}"
+            TriggerType.AIRPLANE_ON -> "Airplane on"
+            TriggerType.AIRPLANE_OFF -> "Airplane off"
+            TriggerType.MEDIA_MOUNTED -> "Media mounted"
+            TriggerType.TIME_WINDOW -> "Window %02d:%02d–%02d:%02d".format(
+                triggerValue, triggerValue2,
+                triggerParam.substringBefore(":").toIntOrNull() ?: 0,
+                triggerParam.substringAfter(":").toIntOrNull() ?: 0,
+            )
+            TriggerType.DAY_OF_WEEK -> "Day mask $triggerValue"
+        }
+        return if (condition == ConditionType.NONE) base else "$base + ${condition.name.lowercase()}"
     }
 
-    fun toJson(): JSONObject = JSONObject()
-        .put("id", id)
-        .put("name", name)
-        .put("enabled", enabled)
+    fun toJson() = JSONObject()
+        .put("id", id).put("name", name).put("enabled", enabled)
         .put("trigger", trigger.name)
-        .put("triggerValue", triggerValue)
-        .put("triggerValue2", triggerValue2)
+        .put("triggerValue", triggerValue).put("triggerValue2", triggerValue2)
         .put("triggerParam", triggerParam)
-        .put("cooldownSec", cooldownSec)
-        .put("notes", notes)
-        .put("actions", JSONArray().also { arr -> actions.forEach { arr.put(it.toJson()) } })
+        .put("condition", condition.name).put("conditionValue", conditionValue)
+        .put("cooldownSec", cooldownSec).put("notes", notes).put("tag", tag)
+        .put("actions", JSONArray().also { a -> actions.forEach { a.put(it.toJson()) } })
 
     companion object {
         fun fromJson(o: JSONObject): Rule {
@@ -131,16 +153,18 @@ data class Rule(
                 for (i in 0 until arr.length()) acts += RuleAction.fromJson(arr.getJSONObject(i))
             }
             return Rule(
-                id = o.getString("id"),
-                name = o.getString("name"),
+                id = o.getString("id"), name = o.getString("name"),
                 enabled = o.optBoolean("enabled", true),
                 trigger = TriggerType.valueOf(o.getString("trigger")),
                 triggerValue = o.optInt("triggerValue", 20),
                 triggerValue2 = o.optInt("triggerValue2", 0),
                 triggerParam = o.optString("triggerParam"),
+                condition = runCatching { ConditionType.valueOf(o.optString("condition", "NONE")) }
+                    .getOrDefault(ConditionType.NONE),
+                conditionValue = o.optInt("conditionValue", 0),
                 actions = acts,
                 cooldownSec = o.optInt("cooldownSec", 0),
-                notes = o.optString("notes"),
+                notes = o.optString("notes"), tag = o.optString("tag"),
             )
         }
     }

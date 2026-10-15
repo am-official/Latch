@@ -1,2 +1,4 @@
 -keep class com.endroid.latch.** { *; }
+-keep class rikka.shizuku.** { *; }
+-dontwarn rikka.shizuku.**
 -dontwarn kotlinx.**

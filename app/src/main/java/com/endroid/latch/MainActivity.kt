@@ -18,6 +18,7 @@ import com.endroid.latch.receiver.PowerReceiver
 import com.endroid.latch.receiver.TimeTickReceiver
 import com.endroid.latch.ui.LatchApp
 import com.endroid.latch.ui.LatchTheme
+import rikka.shizuku.Shizuku
 
 class MainActivity : ComponentActivity() {
     private val powerReceiver = PowerReceiver()
@@ -31,6 +32,11 @@ class MainActivity : ComponentActivity() {
         registerRuntimeReceivers()
         TimeScheduler.rescheduleAll(this)
         AppWatchService.refresh(this)
+        try {
+            if (Shizuku.pingBinder() && Shizuku.checkSelfPermission() != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                // user enables from Settings
+            }
+        } catch (_: Throwable) { }
         setContent {
             LatchTheme { LatchApp() }
         }
@@ -65,6 +71,9 @@ class MainActivity : ComponentActivity() {
             addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
             addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED)
+            addAction(Intent.ACTION_MEDIA_MOUNTED)
+            addDataScheme("file")
         }
         ContextCompat.registerReceiver(this, connectivityReceiver, netFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
     }

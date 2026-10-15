@@ -1,32 +1,24 @@
-# Latch 0.2.0
+# Latch 0.3.0
 
-## New triggers
-- Wi‑Fi connected / disconnected / specific **SSID**
-- Bluetooth connected / disconnected
-- **App opened** (usage access + optional foreground watcher)
-- Screen on / off
-- **Custom broadcast** (plugin API)
+## Permissions settings
+Each capability shows **Enabled** or an **Enable** button (notifications, usage access, write settings, exact alarms, Bluetooth, location/SSID, Shizuku, root).
 
-## Multi-action rules
-Chain notify → wait → ringer → open app → shell in one rule.
+## Elevated execution
+- **Shizuku** preferred for shell when authorized
+- **Root (su)** optional fallback
+- Wi‑Fi / Bluetooth enable actions via elevated `svc` when possible
 
-## Actions
-- Open app / URL
-- Set brightness (write-settings)
-- Shell command (optional **elevated su**)
-- Plugin broadcast out
-- Wait between steps
+## Conditions (AND)
+Also require: Wi‑Fi on/off, charging, screen, battery threshold, weekday/weekend.
 
-## Custom options
-- Per-rule **cooldown** seconds
-- Notes field
-- Settings: elevated shell toggle, plugin API toggle, permission shortcuts
+## More triggers
+Airplane mode · media mounted · time window · day mask
 
-## Widget
-Home-screen widget to toggle a chosen rule on/off.
+## More actions
+Media volume · vibrate · clipboard · flashlight · Wi‑Fi/BT enable · media next · multi-step chains
 
-## Plugin API
-```
-com.endroid.latch.api.FIRE_TRIGGER  extra: trigger=<action string>
-com.endroid.latch.api.RUN_RULE      extra: rule_id=<id>
-```
+## UX
+- Run rule now (play) on each card
+- Import / export JSON
+- On-device run log
+- Tags + notes + cooldown

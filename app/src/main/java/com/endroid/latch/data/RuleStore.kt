@@ -1,26 +1,20 @@
 package com.endroid.latch.data
 
 import android.content.Context
-import org.json.JSONArray
 import com.endroid.latch.engine.AppWatchService
 import com.endroid.latch.engine.TimeScheduler
+import org.json.JSONArray
 import java.io.File
 
-/** On-device JSON store — no cloud, no account. */
 class RuleStore(private val context: Context) {
-    private val file: File
-        get() = File(context.filesDir, "rules.json")
+    private val file: File get() = File(context.filesDir, "rules.json")
 
     @Synchronized
     fun load(): List<Rule> {
         if (!file.exists()) return emptyList()
         return runCatching {
             val arr = JSONArray(file.readText())
-            buildList {
-                for (i in 0 until arr.length()) {
-                    add(Rule.fromJson(arr.getJSONObject(i)))
-                }
-            }
+            buildList { for (i in 0 until arr.length()) add(Rule.fromJson(arr.getJSONObject(i))) }
         }.getOrDefault(emptyList())
     }
 
@@ -40,34 +34,31 @@ class RuleStore(private val context: Context) {
         save(list)
     }
 
-    fun delete(id: String) {
-        save(load().filterNot { it.id == id })
-    }
+    fun delete(id: String) = save(load().filterNot { it.id == id })
 
-    fun setEnabled(id: String, enabled: Boolean) {
+    fun setEnabled(id: String, enabled: Boolean) =
         save(load().map { if (it.id == id) it.copy(enabled = enabled) else it })
-    }
 
-    /** Export all rules as plain JSON text for sharing / backup. */
     fun exportJson(): String {
         val arr = JSONArray()
         load().forEach { arr.put(it.toJson()) }
         return arr.toString(2)
     }
 
-    fun importJson(text: String): Int {
+    fun importJson(text: String, replace: Boolean = false): Int {
         val arr = JSONArray(text)
         val incoming = buildList {
-            for (i in 0 until arr.length()) {
-                add(Rule.fromJson(arr.getJSONObject(i)))
-            }
+            for (i in 0 until arr.length()) add(Rule.fromJson(arr.getJSONObject(i)))
+        }
+        if (replace) {
+            save(incoming)
+            return incoming.size
         }
         val merged = load().toMutableList()
         var added = 0
         for (r in incoming) {
             if (merged.none { it.id == r.id }) {
-                merged.add(r)
-                added++
+                merged.add(r); added++
             }
         }
         save(merged)

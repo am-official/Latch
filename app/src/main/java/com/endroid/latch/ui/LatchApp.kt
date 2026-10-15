@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -27,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.endroid.latch.BuildConfig
 import com.endroid.latch.data.ActionType
+import com.endroid.latch.data.ConditionType
 import com.endroid.latch.data.RingerModeKind
 import com.endroid.latch.data.Rule
 import com.endroid.latch.data.RuleAction
@@ -71,6 +72,7 @@ import com.endroid.latch.data.SettingsStore
 import com.endroid.latch.data.TriggerType
 import com.endroid.latch.engine.AppWatchService
 import com.endroid.latch.engine.Elevated
+import com.endroid.latch.engine.PermissionStatus
 import com.endroid.latch.engine.RuleEngine
 import java.util.UUID
 
@@ -87,7 +89,8 @@ fun LatchApp() {
     val store = remember { RuleStore(context) }
     var rules by remember { mutableStateOf(store.load()) }
     var screen by remember { mutableStateOf<Screen>(Screen.List) }
-    var exportText by remember { mutableStateOf<String?>(null) }
+    var dialogText by remember { mutableStateOf<String?>(null) }
+    var dialogTitle by remember { mutableStateOf("") }
 
     fun reload() {
         rules = store.load()
@@ -100,9 +103,7 @@ fun LatchApp() {
         if (Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
             != PackageManager.PERMISSION_GRANTED
-        ) {
-            notifPerm.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+        ) notifPerm.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     when (val s = screen) {
@@ -132,7 +133,7 @@ fun LatchApp() {
                     Text("No rules yet", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Build local if → then automations. Multi-step actions, Wi‑Fi, Bluetooth, apps, and optional root shell.",
+                        "Local if → then automation with conditions, multi-actions, Shizuku/root, and plugins.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(16.dp))
@@ -150,6 +151,7 @@ fun LatchApp() {
                             onToggle = { store.setEnabled(rule.id, it); reload() },
                             onClick = { screen = Screen.Edit(rule) },
                             onDelete = { store.delete(rule.id); reload() },
+                            onRun = { RuleEngine.run(context, rule) },
                         )
                     }
                 }
@@ -162,21 +164,22 @@ fun LatchApp() {
         )
         Screen.Settings -> SettingsScreen(
             onBack = { screen = Screen.List },
-            onExport = { exportText = store.exportJson() },
+            onShowText = { title, text -> dialogTitle = title; dialogText = text },
+            onImported = { reload() },
         )
     }
 
-    exportText?.let { text ->
+    dialogText?.let { text ->
         AlertDialog(
-            onDismissRequest = { exportText = null },
-            title = { Text("Export JSON") },
+            onDismissRequest = { dialogText = null },
+            title = { Text(dialogTitle) },
             text = {
                 OutlinedTextField(
                     value = text, onValueChange = {}, readOnly = true,
-                    modifier = Modifier.fillMaxWidth().height(220.dp),
+                    modifier = Modifier.fillMaxWidth().height(240.dp),
                 )
             },
-            confirmButton = { TextButton(onClick = { exportText = null }) { Text("Close") } },
+            confirmButton = { TextButton(onClick = { dialogText = null }) { Text("Close") } },
         )
     }
 }
@@ -187,13 +190,14 @@ private fun RuleCard(
     onToggle: (Boolean) -> Unit,
     onClick: () -> Unit,
     onDelete: () -> Unit,
+    onRun: () -> Unit,
 ) {
     Card(
         onClick = onClick,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(rule.name, style = MaterialTheme.typography.titleMedium)
                 Text(rule.triggerSummary(), style = MaterialTheme.typography.bodySmall,
@@ -205,9 +209,9 @@ private fun RuleCard(
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
-                if (rule.cooldownSec > 0) {
-                    Text("Cooldown ${rule.cooldownSec}s", style = MaterialTheme.typography.labelSmall)
-                }
+            }
+            IconButton(onClick = onRun) {
+                Icon(Icons.Default.PlayArrow, contentDescription = "Run now")
             }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete")
@@ -219,23 +223,20 @@ private fun RuleCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EditRuleScreen(
-    initial: Rule?,
-    onBack: () -> Unit,
-    onSave: (Rule) -> Unit,
-) {
+private fun EditRuleScreen(initial: Rule?, onBack: () -> Unit, onSave: (Rule) -> Unit) {
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var trigger by remember { mutableStateOf(initial?.trigger ?: TriggerType.BATTERY_BELOW) }
     var value by remember { mutableIntStateOf(initial?.triggerValue ?: 20) }
     var value2 by remember { mutableIntStateOf(initial?.triggerValue2 ?: 0) }
     var triggerParam by remember { mutableStateOf(initial?.triggerParam ?: "") }
+    var condition by remember { mutableStateOf(initial?.condition ?: ConditionType.NONE) }
+    var conditionValue by remember { mutableIntStateOf(initial?.conditionValue ?: 20) }
     var cooldown by remember { mutableIntStateOf(initial?.cooldownSec ?: 0) }
     var notes by remember { mutableStateOf(initial?.notes ?: "") }
+    var tag by remember { mutableStateOf(initial?.tag ?: "") }
     var actions by remember {
-        mutableStateOf(
-            initial?.actions?.ifEmpty { listOf(RuleAction(ActionType.NOTIFY)) }
-                ?: listOf(RuleAction(ActionType.NOTIFY)),
-        )
+        mutableStateOf(initial?.actions?.ifEmpty { listOf(RuleAction(ActionType.NOTIFY)) }
+            ?: listOf(RuleAction(ActionType.NOTIFY)))
     }
 
     Scaffold(
@@ -257,7 +258,6 @@ private fun EditRuleScreen(
             OutlinedTextField(name, { name = it }, label = { Text("Name") },
                 modifier = Modifier.fillMaxWidth(), singleLine = true)
             EnumDropdown("When", TriggerType.entries, trigger) { trigger = it }
-
             when (trigger) {
                 TriggerType.BATTERY_BELOW, TriggerType.BATTERY_ABOVE ->
                     IntField("Battery %", value) { value = it.coerceIn(1, 100) }
@@ -265,61 +265,68 @@ private fun EditRuleScreen(
                     IntField("Hour", value, Modifier.weight(1f)) { value = it.coerceIn(0, 23) }
                     IntField("Minute", value2, Modifier.weight(1f)) { value2 = it.coerceIn(0, 59) }
                 }
-                TriggerType.WIFI_SSID ->
+                TriggerType.TIME_WINDOW -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IntField("Start hour", value, Modifier.weight(1f)) { value = it.coerceIn(0, 23) }
+                        IntField("Start min", value2, Modifier.weight(1f)) { value2 = it.coerceIn(0, 59) }
+                    }
                     OutlinedTextField(triggerParam, { triggerParam = it },
-                        label = { Text("SSID (exact)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                TriggerType.APP_OPENED ->
-                    OutlinedTextField(triggerParam, { triggerParam = it },
-                        label = { Text("App package name") },
-                        placeholder = { Text("com.example.app") },
+                        label = { Text("End HH:MM") }, placeholder = { Text("22:00") },
                         modifier = Modifier.fillMaxWidth(), singleLine = true)
-                TriggerType.CUSTOM_BROADCAST ->
+                }
+                TriggerType.WIFI_SSID, TriggerType.APP_OPENED, TriggerType.CUSTOM_BROADCAST ->
                     OutlinedTextField(triggerParam, { triggerParam = it },
-                        label = { Text("Broadcast action") },
-                        placeholder = { Text("com.myapp.EVENT") },
+                        label = {
+                            Text(
+                                when (trigger) {
+                                    TriggerType.WIFI_SSID -> "SSID"
+                                    TriggerType.APP_OPENED -> "Package name"
+                                    else -> "Broadcast action"
+                                },
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(), singleLine = true)
+                TriggerType.DAY_OF_WEEK ->
+                    IntField("Day bitmask (Sun=1 …)", value) { value = it }
                 else -> Unit
             }
 
-            Text("Actions (run in order)", style = MaterialTheme.typography.titleSmall)
+            EnumDropdown("Also require (AND)", ConditionType.entries, condition) { condition = it }
+            if (condition == ConditionType.BATTERY_BELOW || condition == ConditionType.BATTERY_ABOVE) {
+                IntField("Condition battery %", conditionValue) { conditionValue = it.coerceIn(1, 100) }
+            }
+
+            Text("Actions (in order)", style = MaterialTheme.typography.titleSmall)
             actions.forEachIndexed { index, action ->
-                ActionEditor(
-                    index = index,
-                    action = action,
-                    onChange = { a ->
-                        actions = actions.toMutableList().also { it[index] = a }
-                    },
+                ActionEditor(index, action,
+                    onChange = { a -> actions = actions.toMutableList().also { it[index] = a } },
                     onRemove = {
-                        if (actions.size > 1) {
-                            actions = actions.toMutableList().also { it.removeAt(index) }
-                        }
+                        if (actions.size > 1) actions = actions.toMutableList().also { it.removeAt(index) }
                     },
                 )
             }
             OutlinedButton(
-                onClick = { actions = actions + RuleAction(ActionType.TOAST, text = "Next step") },
+                onClick = { actions = actions + RuleAction(ActionType.TOAST, text = "Next") },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Add action") }
 
-            IntField("Cooldown seconds (0 = none)", cooldown) { cooldown = it.coerceAtLeast(0) }
-            OutlinedTextField(notes, { notes = it }, label = { Text("Notes (optional)") },
+            IntField("Cooldown seconds", cooldown) { cooldown = it.coerceAtLeast(0) }
+            OutlinedTextField(tag, { tag = it }, label = { Text("Tag") },
+                modifier = Modifier.fillMaxWidth(), singleLine = true)
+            OutlinedTextField(notes, { notes = it }, label = { Text("Notes") },
                 modifier = Modifier.fillMaxWidth())
 
             Button(
                 onClick = {
-                    val n = name.ifBlank { trigger.name.lowercase().replace('_', ' ') }
                     onSave(
                         Rule(
                             id = initial?.id ?: UUID.randomUUID().toString(),
-                            name = n,
+                            name = name.ifBlank { trigger.name.lowercase().replace('_', ' ') },
                             enabled = initial?.enabled ?: true,
-                            trigger = trigger,
-                            triggerValue = value,
-                            triggerValue2 = value2,
+                            trigger = trigger, triggerValue = value, triggerValue2 = value2,
                             triggerParam = triggerParam,
-                            actions = actions,
-                            cooldownSec = cooldown,
-                            notes = notes,
+                            condition = condition, conditionValue = conditionValue,
+                            actions = actions, cooldownSec = cooldown, notes = notes, tag = tag,
                         ),
                     )
                 },
@@ -342,14 +349,12 @@ private fun ActionEditor(
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Step ${index + 1}", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+                Text("Step ${index + 1}", Modifier.weight(1f), style = MaterialTheme.typography.labelLarge)
                 IconButton(onClick = onRemove) {
                     Icon(Icons.Default.Delete, contentDescription = "Remove")
                 }
             }
-            EnumDropdown("Action", ActionType.entries, action.type) {
-                onChange(action.copy(type = it))
-            }
+            EnumDropdown("Action", ActionType.entries, action.type) { onChange(action.copy(type = it)) }
             when (action.type) {
                 ActionType.NOTIFY -> {
                     OutlinedTextField(action.title, { onChange(action.copy(title = it)) },
@@ -357,36 +362,21 @@ private fun ActionEditor(
                     OutlinedTextField(action.text, { onChange(action.copy(text = it)) },
                         label = { Text("Text") }, modifier = Modifier.fillMaxWidth())
                 }
-                ActionType.TOAST ->
+                ActionType.TOAST, ActionType.CLIPBOARD ->
                     OutlinedTextField(action.text, { onChange(action.copy(text = it)) },
-                        label = { Text("Message") }, modifier = Modifier.fillMaxWidth())
+                        label = { Text("Text") }, modifier = Modifier.fillMaxWidth())
                 ActionType.RINGER_MODE ->
                     EnumDropdown("Mode", RingerModeKind.entries, action.ringerMode) {
                         onChange(action.copy(ringerMode = it))
                     }
-                ActionType.OPEN_APP ->
+                ActionType.OPEN_APP, ActionType.OPEN_URL, ActionType.SHELL,
+                ActionType.SET_BRIGHTNESS, ActionType.WAIT_MS, ActionType.MEDIA_VOLUME,
+                ActionType.VIBRATE, ActionType.FLASHLIGHT, ActionType.WIFI_ENABLE,
+                ActionType.BLUETOOTH_ENABLE, ActionType.PLUGIN_BROADCAST,
+                ->
                     OutlinedTextField(action.param, { onChange(action.copy(param = it)) },
-                        label = { Text("Package name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                ActionType.OPEN_URL ->
-                    OutlinedTextField(action.param, { onChange(action.copy(param = it)) },
-                        label = { Text("URL") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                ActionType.SET_BRIGHTNESS ->
-                    OutlinedTextField(action.param, { onChange(action.copy(param = it)) },
-                        label = { Text("Brightness 1–100") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                ActionType.SHELL ->
-                    OutlinedTextField(action.param, { onChange(action.copy(param = it)) },
-                        label = { Text("Shell command") },
-                        placeholder = { Text("cmd (uses su if elevated ON)") },
-                        modifier = Modifier.fillMaxWidth())
-                ActionType.WAIT_MS ->
-                    OutlinedTextField(action.param, { onChange(action.copy(param = it)) },
-                        label = { Text("Wait milliseconds") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                ActionType.PLUGIN_BROADCAST -> {
-                    OutlinedTextField(action.param, { onChange(action.copy(param = it)) },
-                        label = { Text("Broadcast action") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                    OutlinedTextField(action.text, { onChange(action.copy(text = it)) },
-                        label = { Text("Extra text") }, modifier = Modifier.fillMaxWidth())
-                }
+                        label = { Text("Parameter") }, modifier = Modifier.fillMaxWidth())
+                ActionType.SKIP_TO_NEXT -> Text("Skips to next media track", style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -394,12 +384,53 @@ private fun ActionEditor(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SettingsScreen(onBack: () -> Unit, onExport: () -> Unit) {
+private fun SettingsScreen(
+    onBack: () -> Unit,
+    onShowText: (String, String) -> Unit,
+    onImported: () -> Unit,
+) {
     val context = LocalContext.current
     val settings = remember { SettingsStore(context) }
     var elevated by remember { mutableStateOf(settings.elevatedShell) }
+    var preferShizuku by remember { mutableStateOf(settings.preferShizuku) }
     var plugin by remember { mutableStateOf(settings.pluginApiEnabled) }
-    val hasSu = remember { Elevated.hasSu() }
+    var logRuns by remember { mutableStateOf(settings.logRuns) }
+    var tick by remember { mutableIntStateOf(0) }
+    val perms = remember(tick) { PermissionStatus.all(context) }
+    var importText by remember { mutableStateOf("") }
+    var showImport by remember { mutableStateOf(false) }
+
+    val notifPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { tick++ }
+    val multiPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { tick++ }
+
+    fun enablePerm(id: String) {
+        when (id) {
+            "notif" -> if (Build.VERSION.SDK_INT >= 33) notifPerm.launch(Manifest.permission.POST_NOTIFICATIONS)
+            "usage" -> context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+            "write_settings" -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                context.startActivity(
+                    Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                        data = Uri.parse("package:${context.packageName}")
+                    },
+                )
+            }
+            "exact_alarm" -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
+            }
+            "bt" -> if (Build.VERSION.SDK_INT >= 31) {
+                multiPerm.launch(arrayOf(Manifest.permission.BLUETOOTH_CONNECT))
+            }
+            "location" -> multiPerm.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                ),
+            )
+            "shizuku" -> Elevated.requestShizukuPermission()
+            "root" -> { /* informational */ }
+        }
+        tick++
+    }
 
     Scaffold(
         topBar = {
@@ -414,74 +445,126 @@ private fun SettingsScreen(onBack: () -> Unit, onExport: () -> Unit) {
         },
     ) { padding ->
         Column(
-            Modifier.padding(padding).padding(20.dp).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            Modifier.padding(padding).padding(16.dp).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text("Latch ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.titleLarge)
-            Text("On-device automation. No account, no cloud, no trackers.")
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Elevated shell (root / su)")
-                    Text(
-                        if (hasSu) "su detected — shell actions can run as root"
-                        else "su not found — shell runs as app user",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+            Text("Permissions", style = MaterialTheme.typography.titleMedium)
+            perms.forEach { row ->
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(row.title, style = MaterialTheme.typography.titleSmall)
+                            Text(row.detail, style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        if (row.granted) {
+                            Text(
+                                "Enabled",
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        } else if (row.id == "root") {
+                            Text("Unavailable", style = MaterialTheme.typography.labelLarge)
+                        } else {
+                            OutlinedButton(onClick = { enablePerm(row.id) }) { Text("Enable") }
+                        }
+                    }
                 }
-                Switch(checked = elevated, onCheckedChange = {
-                    elevated = it
-                    settings.elevatedShell = it
-                })
+            }
+            OutlinedButton(onClick = { tick++ }, modifier = Modifier.fillMaxWidth()) {
+                Text("Refresh permission status")
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Plugin API")
-                    Text(
-                        "Allow other apps to fire triggers / run rules via broadcast",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(checked = plugin, onCheckedChange = {
-                    plugin = it
-                    settings.pluginApiEnabled = it
-                })
+            Text("Automation options", style = MaterialTheme.typography.titleMedium)
+            SettingSwitch(
+                "Prefer Shizuku for shell",
+                "Use Shizuku before root when authorized",
+                preferShizuku,
+            ) { preferShizuku = it; settings.preferShizuku = it }
+            SettingSwitch(
+                "Allow root (su) shell",
+                "Fallback / elevated shell when su exists",
+                elevated,
+            ) { elevated = it; settings.elevatedShell = it }
+            SettingSwitch(
+                "Plugin API",
+                "Other apps may fire triggers / run rules",
+                plugin,
+            ) { plugin = it; settings.pluginApiEnabled = it }
+            SettingSwitch(
+                "Run log",
+                "Keep a short on-device history of rule runs",
+                logRuns,
+            ) { logRuns = it; settings.logRuns = it }
+
+            Button(
+                onClick = { onShowText("Export JSON", RuleStore(context).exportJson()) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Export rules") }
+            OutlinedButton(onClick = { showImport = true }, modifier = Modifier.fillMaxWidth()) {
+                Text("Import rules JSON")
             }
-
-            OutlinedButton(onClick = {
-                context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-            }, modifier = Modifier.fillMaxWidth()) { Text("Usage access (app-opened triggers)") }
-
-            OutlinedButton(onClick = {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    context.startActivity(
-                        Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
-                            data = Uri.parse("package:${context.packageName}")
-                        },
-                    )
-                }
-            }, modifier = Modifier.fillMaxWidth()) { Text("Write settings (brightness)") }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                OutlinedButton(onClick = {
-                    context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
-                }, modifier = Modifier.fillMaxWidth()) { Text("Exact alarms (daily time)") }
-            }
-
-            Button(onClick = onExport, modifier = Modifier.fillMaxWidth()) { Text("Export rules JSON") }
+            OutlinedButton(
+                onClick = { onShowText("Run log", settings.runLog.ifBlank { "(empty)" }) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("View run log") }
 
             Text(
-                "Plugin intents:\n" +
-                    "com.endroid.latch.api.FIRE_TRIGGER (extra trigger=…)\n" +
-                    "com.endroid.latch.api.RUN_RULE (extra rule_id=…)",
+                "Plugin:\ncom.endroid.latch.api.FIRE_TRIGGER (trigger=…)\n" +
+                    "com.endroid.latch.api.RUN_RULE (rule_id=…)",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text("MIT · Project Endroid", style = MaterialTheme.typography.labelMedium)
+            Text("MIT · offline by design · Project Endroid",
+                style = MaterialTheme.typography.labelMedium)
         }
+    }
+
+    if (showImport) {
+        AlertDialog(
+            onDismissRequest = { showImport = false },
+            title = { Text("Import JSON") },
+            text = {
+                OutlinedTextField(
+                    value = importText,
+                    onValueChange = { importText = it },
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                    placeholder = { Text("Paste rules array…") },
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    runCatching {
+                        val n = RuleStore(context).importJson(importText)
+                        onImported()
+                        showImport = false
+                        onShowText("Import", "Added $n rule(s)")
+                    }.onFailure {
+                        onShowText("Import failed", it.message ?: "error")
+                    }
+                }) { Text("Import") }
+            },
+            dismissButton = { TextButton(onClick = { showImport = false }) { Text("Cancel") } },
+        )
+    }
+}
+
+@Composable
+private fun SettingSwitch(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Switch(checked = checked, onCheckedChange = onChange)
     }
 }
 
