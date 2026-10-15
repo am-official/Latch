@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- padlock-ish mark for Latch -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,30c-8.3,0 -15,6.7 -15,15v8h-4c-3.3,0 -6,2.7 -6,6v20c0,3.3 2.7,6 6,6h38c3.3,0 6,-2.7 6,-6V59c0,-3.3 -2.7,-6 -6,-6h-4v-8c0,-8.3 -6.7,-15 -15,-15zM54,38c3.9,0 7,3.1 7,7v8H47v-8c0,-3.9 3.1,-7 7,-7z"/>
+</vector>

@@ -1,0 +1,2 @@
+-keep class com.endroid.latch.** { *; }
+-dontwarn kotlinx.**
