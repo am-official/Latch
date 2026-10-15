@@ -1,13 +1,11 @@
 package com.endroid.latch.receiver
 
-import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.ConnectivityManager
-import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
 import android.os.BatteryManager
@@ -15,6 +13,7 @@ import android.os.Build
 import com.endroid.latch.data.RuleStore
 import com.endroid.latch.engine.RuleEngine
 import com.endroid.latch.engine.TimeScheduler
+import com.endroid.latch.widget.LatchWidgetProvider
 import java.util.Calendar
 
 class BootReceiver : BroadcastReceiver() {
