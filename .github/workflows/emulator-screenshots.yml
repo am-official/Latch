@@ -9,26 +9,18 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-          ls -la /dev/kvm || true
-
       - name: Build debug APK
-        run: |
-          chmod +x gradlew
-          ./gradlew :app:assembleDebug --stacktrace
-
-      - name: Run emulator and capture
+        run: chmod +x gradlew && ./gradlew :app:assembleDebug --stacktrace
+      - name: Emulator capture
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
@@ -38,47 +30,9 @@ jobs:
           force-avd-creation: true
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: |
-            set -eux
-            adb wait-for-device
-            for i in $(seq 1 60); do
-              booted=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)
-              if [ "$booted" = "1" ]; then break; fi
-              sleep 3
-            done
-            adb shell settings put global window_animation_scale 0
-            adb shell settings put global transition_animation_scale 0
-            adb shell settings put global animator_duration_scale 0
-            APK=$(ls app/build/outputs/apk/debug/*-debug.apk | head -1)
-            adb install -r -t "$APK"
-            adb shell am start -n com.endroid.latch/.MainActivity
-            sleep 6
-            mkdir -p screenshots
-            adb exec-out screencap -p > screenshots/01_home.png
-            # Tap top-right settings gear (approx)
-            adb shell input tap 980 160
-            sleep 3
-            adb exec-out screencap -p > screenshots/02_settings.png
-            adb shell input swipe 540 1600 540 400 300
-            sleep 1
-            adb exec-out screencap -p > screenshots/03_settings_scrolled.png
-            adb shell input keyevent 4
-            sleep 1
-            adb shell input tap 980 160 || true
-            sleep 1
-            adb shell input keyevent 4
-            adb shell am start -n com.endroid.latch/.MainActivity
-            sleep 2
-            adb shell input tap 540 1700 || true
-            sleep 2
-            adb exec-out screencap -p > screenshots/04_edit_or_home.png
-            ls -la screenshots
-            file screenshots/*.png
-
-      - name: Upload screenshots
+          script: bash scripts/emulator-capture.sh
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
         with:
           name: latch-emulator-screenshots
           path: screenshots/
-          if-no-files-found: warn
