@@ -12,7 +12,7 @@ class SystemEventReceiver : BroadcastReceiver() {
         val app = context.applicationContext
         when (intent?.action) {
             Intent.ACTION_USER_PRESENT -> RuleEngine.fireType(app, TriggerType.USER_PRESENT)
-            Intent.ACTION_POWER_SAVE_MODE_CHANGED -> {
+            PowerManager.ACTION_POWER_SAVE_MODE_CHANGED -> {
                 val pm = app.getSystemService(Context.POWER_SERVICE) as PowerManager
                 RuleEngine.fireType(
                     app,

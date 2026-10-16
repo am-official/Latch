@@ -14,6 +14,7 @@ import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
 import android.net.wifi.WifiManager
 import android.os.Build
+import android.os.PowerManager
 import android.os.IBinder
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
@@ -118,7 +119,7 @@ class LatchMonitorService : Service() {
             ContextCompat.registerReceiver(this, connectivity, netFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
             val sysFilter = IntentFilter().apply {
                 addAction(Intent.ACTION_USER_PRESENT)
-                addAction(Intent.ACTION_POWER_SAVE_MODE_CHANGED)
+                addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
                 addAction(Intent.ACTION_DEVICE_STORAGE_LOW)
                 addAction(Intent.ACTION_DEVICE_STORAGE_OK)
                 addAction(Intent.ACTION_DOCK_EVENT)
