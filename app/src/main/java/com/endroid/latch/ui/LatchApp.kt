@@ -304,10 +304,14 @@ private fun EditRuleScreen(initial: Rule?, onBack: () -> Unit, onSave: (Rule) ->
                         )
                     }
                 }
-                TriggerType.APP_OPENED, TriggerType.CUSTOM_BROADCAST ->
+                TriggerType.APP_OPENED, TriggerType.CUSTOM_BROADCAST, TriggerType.PACKAGE_ADDED, TriggerType.PACKAGE_REMOVED ->
                     OutlinedTextField(triggerParam, { triggerParam = it },
                         label = {
-                            Text(if (trigger == TriggerType.APP_OPENED) "Package name" else "Broadcast action")
+                            Text(when (trigger) {
+                                    TriggerType.APP_OPENED -> "App package name"
+                                    TriggerType.PACKAGE_ADDED, TriggerType.PACKAGE_REMOVED -> "Package filter (empty = any)"
+                                    else -> "Broadcast action string"
+                                })
                         },
                         modifier = Modifier.fillMaxWidth(), singleLine = true)
                 TriggerType.DAY_OF_WEEK ->
@@ -382,63 +386,108 @@ private fun ActionEditor(
             when (action.type) {
                 ActionType.NOTIFY -> {
                     OutlinedTextField(action.title, { onChange(action.copy(title = it)) },
-                        label = { Text("Title") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        label = { Text("Notification title") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     OutlinedTextField(action.text, { onChange(action.copy(text = it)) },
-                        label = { Text("Text") }, modifier = Modifier.fillMaxWidth())
+                        label = { Text("Notification body") }, modifier = Modifier.fillMaxWidth())
                 }
-                ActionType.TOAST, ActionType.CLIPBOARD ->
+                ActionType.TOAST ->
                     OutlinedTextField(action.text, { onChange(action.copy(text = it)) },
-                        label = { Text("Text") }, modifier = Modifier.fillMaxWidth())
+                        label = { Text("Toast message") }, modifier = Modifier.fillMaxWidth())
+                ActionType.CLIPBOARD ->
+                    OutlinedTextField(action.text, { onChange(action.copy(text = it)) },
+                        label = { Text("Text to copy") }, modifier = Modifier.fillMaxWidth())
                 ActionType.RINGER_MODE ->
-                    EnumDropdown("Mode", RingerModeKind.entries, action.ringerMode) {
+                    EnumDropdown("Ringer mode", RingerModeKind.entries, action.ringerMode) {
                         onChange(action.copy(ringerMode = it))
                     }
                 ActionType.SET_BRIGHTNESS -> {
                     val v = action.param.toIntOrNull()?.coerceIn(1, 100) ?: 50
-                    Text("Brightness: $v%", style = MaterialTheme.typography.labelLarge)
-                    Slider(
-                        value = v.toFloat(),
+                    Text("Screen brightness: $v%", style = MaterialTheme.typography.labelLarge)
+                    Slider(value = v.toFloat(),
                         onValueChange = { onChange(action.copy(param = it.toInt().coerceIn(1, 100).toString())) },
-                        valueRange = 1f..100f,
-                        steps = 98,
-                    )
+                        valueRange = 1f..100f, steps = 98)
+                    Text("Needs Modify system settings", style = MaterialTheme.typography.bodySmall)
                 }
-                ActionType.MEDIA_VOLUME -> {
+                ActionType.MEDIA_VOLUME, ActionType.ALARM_VOLUME, ActionType.RING_VOLUME -> {
                     val v = action.param.toIntOrNull()?.coerceIn(0, 100) ?: 50
-                    Text("Media volume: $v%", style = MaterialTheme.typography.labelLarge)
-                    Slider(
-                        value = v.toFloat(),
+                    val label = when (action.type) {
+                        ActionType.ALARM_VOLUME -> "Alarm volume"
+                        ActionType.RING_VOLUME -> "Ring volume"
+                        else -> "Media volume"
+                    }
+                    Text("$label: $v%", style = MaterialTheme.typography.labelLarge)
+                    Slider(value = v.toFloat(),
                         onValueChange = { onChange(action.copy(param = it.toInt().coerceIn(0, 100).toString())) },
-                        valueRange = 0f..100f,
-                        steps = 99,
-                    )
+                        valueRange = 0f..100f, steps = 99)
                 }
                 ActionType.VIBRATE -> {
                     val v = action.param.toIntOrNull()?.coerceIn(50, 2000) ?: 200
-                    Text("Vibrate: ${v}ms", style = MaterialTheme.typography.labelLarge)
-                    Slider(
-                        value = v.toFloat(),
+                    Text("Vibration length: ${v}ms", style = MaterialTheme.typography.labelLarge)
+                    Slider(value = v.toFloat(),
                         onValueChange = { onChange(action.copy(param = it.toInt().coerceIn(50, 2000).toString())) },
-                        valueRange = 50f..2000f,
-                    )
+                        valueRange = 50f..2000f)
                 }
                 ActionType.WAIT_MS -> {
                     val v = action.param.toIntOrNull()?.coerceIn(0, 10000) ?: 500
-                    Text("Wait: ${v}ms", style = MaterialTheme.typography.labelLarge)
-                    Slider(
-                        value = v.toFloat(),
+                    Text("Wait before next action: ${v}ms", style = MaterialTheme.typography.labelLarge)
+                    Slider(value = v.toFloat(),
                         onValueChange = { onChange(action.copy(param = it.toInt().coerceIn(0, 10000).toString())) },
-                        valueRange = 0f..10000f,
-                    )
+                        valueRange = 0f..10000f)
                 }
-                ActionType.OPEN_APP, ActionType.OPEN_URL, ActionType.SHELL,
-                ActionType.FLASHLIGHT, ActionType.WIFI_ENABLE,
-                ActionType.BLUETOOTH_ENABLE, ActionType.PLUGIN_BROADCAST,
-                ActionType.FORCE_STOP, ActionType.MOBILE_DATA, ActionType.AIRPLANE_MODE,
-                ->
+                ActionType.OPEN_APP ->
                     OutlinedTextField(action.param, { onChange(action.copy(param = it)) },
-                        label = { Text("Parameter") }, modifier = Modifier.fillMaxWidth())
-                ActionType.SKIP_TO_NEXT -> Text("Skips to next media track", style = MaterialTheme.typography.bodySmall)
+                        label = { Text("App package name") },
+                        placeholder = { Text("com.android.chrome") },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true)
+                ActionType.OPEN_URL ->
+                    OutlinedTextField(action.param, { onChange(action.copy(param = it)) },
+                        label = { Text("Website URL") },
+                        placeholder = { Text("https://example.com") },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true)
+                ActionType.SHELL ->
+                    OutlinedTextField(action.param, { onChange(action.copy(param = it)) },
+                        label = { Text("Shell command") },
+                        placeholder = { Text("input keyevent 26") },
+                        modifier = Modifier.fillMaxWidth())
+                ActionType.FLASHLIGHT ->
+                    EnumStringDropdown("Flashlight", listOf("on", "off"),
+                        action.param.ifBlank { "on" }) { onChange(action.copy(param = it)) }
+                ActionType.WIFI_ENABLE, ActionType.BLUETOOTH_ENABLE, ActionType.MOBILE_DATA,
+                ActionType.AIRPLANE_MODE, ActionType.DND_MODE -> {
+                    val name = action.type.name.lowercase().replace('_', ' ')
+                    EnumStringDropdown(
+                        "$name (needs elevated or special access for some)",
+                        listOf("on", "off"),
+                        action.param.ifBlank { "on" },
+                    ) { onChange(action.copy(param = it)) }
+                }
+                ActionType.PLUGIN_BROADCAST ->
+                    OutlinedTextField(action.param, { onChange(action.copy(param = it)) },
+                        label = { Text("Broadcast action string") },
+                        placeholder = { Text("com.example.EVENT") },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true)
+                ActionType.FORCE_STOP ->
+                    OutlinedTextField(action.param, { onChange(action.copy(param = it)) },
+                        label = { Text("Package to force-stop (Shizuku/root)") },
+                        placeholder = { Text("com.other.app") },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true)
+                ActionType.SPEAK_TTS ->
+                    OutlinedTextField(action.text, { onChange(action.copy(text = it)) },
+                        label = { Text("Text to speak aloud") },
+                        modifier = Modifier.fillMaxWidth())
+                ActionType.OPEN_APP_SETTINGS ->
+                    OutlinedTextField(action.param, { onChange(action.copy(param = it)) },
+                        label = { Text("Package (empty = Latch)") },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true)
+                ActionType.HTTP_GET ->
+                    OutlinedTextField(action.param, { onChange(action.copy(param = it)) },
+                        label = { Text("URL to request (GET)") },
+                        placeholder = { Text("https://…") },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true)
+                ActionType.SKIP_TO_NEXT, ActionType.MEDIA_PREV, ActionType.MEDIA_PLAY_PAUSE,
+                ActionType.OPEN_SYSTEM_SETTINGS ->
+                    Text("No extra options — runs as soon as the rule fires.",
+                        style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -542,6 +591,25 @@ private fun SettingsScreen(
             }
             OutlinedButton(onClick = { tick++ }, modifier = Modifier.fillMaxWidth()) {
                 Text("Refresh permission status")
+            }
+            OutlinedButton(onClick = {
+                try {
+                    val i = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                        data = Uri.parse("package:${context.packageName}")
+                    }
+                    context.startActivity(i)
+                } catch (_: Exception) {
+                    context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                }
+            }, modifier = Modifier.fillMaxWidth()) {
+                Text("Disable battery optimization (keep monitor alive)")
+            }
+            OutlinedButton(onClick = {
+                if (Build.VERSION.SDK_INT >= 23) {
+                    context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+                }
+            }, modifier = Modifier.fillMaxWidth()) {
+                Text("Do Not Disturb access (for DND action)")
             }
 
             Text("Automation options", style = MaterialTheme.typography.titleMedium)

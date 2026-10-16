@@ -11,4 +11,6 @@
     <string name="widget_off">OFF — tap to enable</string>
     <string name="monitor_title">Latch is active</string>
     <string name="monitor_text">Watching battery, network, and other triggers</string>
+    <string name="monitor_channel">Latch monitor</string>
+    <string name="monitor_channel_desc">Keeps automation running in the background</string>
 </resources>

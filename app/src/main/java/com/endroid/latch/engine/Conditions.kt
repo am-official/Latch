@@ -28,6 +28,14 @@ object Conditions {
                 val d = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
                 d in Calendar.MONDAY..Calendar.FRIDAY
             }
+            ConditionType.POWER_SAVE_ON -> {
+                val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+                pm.isPowerSaveMode
+            }
+            ConditionType.POWER_SAVE_OFF -> {
+                val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+                !pm.isPowerSaveMode
+            }
             ConditionType.DAY_WEEKEND -> {
                 val d = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
                 d == Calendar.SATURDAY || d == Calendar.SUNDAY

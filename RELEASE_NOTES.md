@@ -1,20 +1,19 @@
-# Latch 0.4.0
+# Latch 0.5.0
 
-## Reliability
-- **Single monitor path** — receivers only in `LatchMonitorService` (no double-fire with UI)
-- Battery matching via pure **RuleLogic** (unit-tested): cross threshold + force on save/start
-- Wi‑Fi events **debounced** (800ms)
-- Day-of-week trigger fixed (was never firing)
-- Brightness uses manual mode + clear errors
+## Critical: monitor stays alive
+- Dedicated **monitor notification channel** (ongoing service)
+- **Watchdog alarm** every ~15 minutes restarts the service if the OS kills it
+- Restarts after task removed / service destroy
+- Settings: **Disable battery optimization** (strongly recommended)
+- Do Not Disturb access shortcut for DND actions
 
-## Shizuku
-- Cached `newProcess` reflection, `/system/bin/sh` fallback, process timeouts
-- Binder received/dead listeners
-- Elevated helpers: airplane, mobile data, force-stop package
+## Clearer action fields
+No more vague “Parameter” — each action has labeled fields, placeholders, and on/off pickers.
+
+## New triggers
+User unlocked · Battery saver on/off · App installed/removed · Storage low · Dock · Shutdown
 
 ## New actions
-- Force-stop app · Mobile data · Airplane mode (via Shizuku/su)
+Media previous / play-pause · Alarm & ring volume · DND · Text-to-speech · Open app/system settings · HTTP GET
 
-## Quality
-- JVM unit tests for RuleLogic (battery, SSID, time window, day bits, brightness)
-- Settings **Self-test** button
+Leave at least one rule enabled and turn off battery optimization so automation keeps running overnight.

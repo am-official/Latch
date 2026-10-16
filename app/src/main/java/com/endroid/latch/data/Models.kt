@@ -15,41 +15,38 @@ enum class TriggerType {
     CUSTOM_BROADCAST,
     AIRPLANE_ON, AIRPLANE_OFF,
     MEDIA_MOUNTED,
-    TIME_WINDOW,          // active between HH:MM and HH:MM (checked on events)
-    DAY_OF_WEEK,          // triggerValue bitmask Sun=1 Mon=2 ...
+    TIME_WINDOW,
+    DAY_OF_WEEK,
+    USER_PRESENT,
+    POWER_SAVE_ON, POWER_SAVE_OFF,
+    PACKAGE_ADDED, PACKAGE_REMOVED,
+    STORAGE_LOW,
+    DOCK_EVENT,
+    SHUTDOWN,
 }
 
 enum class ActionType {
     NOTIFY, RINGER_MODE, TOAST,
     OPEN_APP, OPEN_URL, SET_BRIGHTNESS,
     SHELL, WAIT_MS, PLUGIN_BROADCAST,
-    MEDIA_VOLUME,         // 0-100
-    VIBRATE,              // duration ms in param
-    CLIPBOARD,            // text
-    FLASHLIGHT,           // on/off in param
-    WIFI_ENABLE,          // param true/false (best-effort)
-    BLUETOOTH_ENABLE,
-    SKIP_TO_NEXT,         // media next
-    FORCE_STOP,           // elevated am force-stop
-    MOBILE_DATA,          // svc data
-    AIRPLANE_MODE,        // settings + broadcast
+    MEDIA_VOLUME, VIBRATE, CLIPBOARD, FLASHLIGHT,
+    WIFI_ENABLE, BLUETOOTH_ENABLE, SKIP_TO_NEXT,
+    FORCE_STOP, MOBILE_DATA, AIRPLANE_MODE,
+    MEDIA_PREV, MEDIA_PLAY_PAUSE,
+    ALARM_VOLUME, RING_VOLUME,
+    DND_MODE,
+    SPEAK_TTS,
+    OPEN_APP_SETTINGS,
+    OPEN_SYSTEM_SETTINGS,
+    HTTP_GET,
 }
 
 enum class RingerModeKind { NORMAL, VIBRATE, SILENT }
 
-/** Extra condition that must also hold (AND). */
 enum class ConditionType {
-    NONE,
-    WIFI_ON,
-    WIFI_OFF,
-    CHARGING,
-    NOT_CHARGING,
-    SCREEN_ON,
-    SCREEN_OFF,
-    BATTERY_BELOW,
-    BATTERY_ABOVE,
-    DAY_WEEKDAY,
-    DAY_WEEKEND,
+    NONE, WIFI_ON, WIFI_OFF, CHARGING, NOT_CHARGING,
+    SCREEN_ON, SCREEN_OFF, BATTERY_BELOW, BATTERY_ABOVE,
+    DAY_WEEKDAY, DAY_WEEKEND, POWER_SAVE_ON, POWER_SAVE_OFF,
 }
 
 data class RuleAction(
@@ -64,21 +61,30 @@ data class RuleAction(
         ActionType.RINGER_MODE -> "Ringer → ${ringerMode.name.lowercase()}"
         ActionType.TOAST -> "Toast: ${text.ifBlank { "…" }}"
         ActionType.OPEN_APP -> "Open: ${param.ifBlank { "?" }}"
-        ActionType.OPEN_URL -> "URL"
+        ActionType.OPEN_URL -> "URL ${param.take(24)}"
         ActionType.SET_BRIGHTNESS -> "Brightness ${param}%"
         ActionType.SHELL -> "Shell: ${param.take(28)}"
         ActionType.WAIT_MS -> "Wait ${param}ms"
-        ActionType.PLUGIN_BROADCAST -> "Plugin out"
+        ActionType.PLUGIN_BROADCAST -> "Plugin: ${param.ifBlank { "event" }}"
         ActionType.MEDIA_VOLUME -> "Media vol ${param}%"
         ActionType.VIBRATE -> "Vibrate ${param}ms"
         ActionType.CLIPBOARD -> "Clipboard"
         ActionType.FLASHLIGHT -> "Flash ${param.ifBlank { "on" }}"
-        ActionType.WIFI_ENABLE -> "Wi‑Fi ${param.ifBlank { "toggle" }}"
-        ActionType.BLUETOOTH_ENABLE -> "BT ${param.ifBlank { "toggle" }}"
+        ActionType.WIFI_ENABLE -> "Wi‑Fi ${param.ifBlank { "on" }}"
+        ActionType.BLUETOOTH_ENABLE -> "BT ${param.ifBlank { "on" }}"
         ActionType.SKIP_TO_NEXT -> "Media next"
         ActionType.FORCE_STOP -> "Force-stop ${param.ifBlank { "?" }}"
-        ActionType.MOBILE_DATA -> "Data ${param.ifBlank { "toggle" }}"
+        ActionType.MOBILE_DATA -> "Data ${param.ifBlank { "on" }}"
         ActionType.AIRPLANE_MODE -> "Airplane ${param.ifBlank { "on" }}"
+        ActionType.MEDIA_PREV -> "Media previous"
+        ActionType.MEDIA_PLAY_PAUSE -> "Play/Pause"
+        ActionType.ALARM_VOLUME -> "Alarm vol ${param}%"
+        ActionType.RING_VOLUME -> "Ring vol ${param}%"
+        ActionType.DND_MODE -> "DND ${param.ifBlank { "on" }}"
+        ActionType.SPEAK_TTS -> "Speak: ${text.ifBlank { param }.take(24)}"
+        ActionType.OPEN_APP_SETTINGS -> "App settings ${param.ifBlank { "self" }}"
+        ActionType.OPEN_SYSTEM_SETTINGS -> "System settings"
+        ActionType.HTTP_GET -> "HTTP GET ${param.take(24)}"
     }
 
     fun toJson() = JSONObject()
@@ -133,12 +139,16 @@ data class Rule(
             TriggerType.AIRPLANE_ON -> "Airplane on"
             TriggerType.AIRPLANE_OFF -> "Airplane off"
             TriggerType.MEDIA_MOUNTED -> "Media mounted"
-            TriggerType.TIME_WINDOW -> "Window %02d:%02d–%02d:%02d".format(
-                triggerValue, triggerValue2,
-                triggerParam.substringBefore(":").toIntOrNull() ?: 0,
-                triggerParam.substringAfter(":").toIntOrNull() ?: 0,
-            )
+            TriggerType.TIME_WINDOW -> "Window %02d:%02d".format(triggerValue, triggerValue2)
             TriggerType.DAY_OF_WEEK -> "Day mask $triggerValue"
+            TriggerType.USER_PRESENT -> "User unlocked"
+            TriggerType.POWER_SAVE_ON -> "Battery saver on"
+            TriggerType.POWER_SAVE_OFF -> "Battery saver off"
+            TriggerType.PACKAGE_ADDED -> "App installed ${triggerParam.ifBlank { "any" }}"
+            TriggerType.PACKAGE_REMOVED -> "App removed ${triggerParam.ifBlank { "any" }}"
+            TriggerType.STORAGE_LOW -> "Storage low"
+            TriggerType.DOCK_EVENT -> "Dock"
+            TriggerType.SHUTDOWN -> "Shutdown"
         }
         return if (condition == ConditionType.NONE) base else "$base + ${condition.name.lowercase()}"
     }

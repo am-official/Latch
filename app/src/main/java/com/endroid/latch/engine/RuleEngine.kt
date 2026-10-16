@@ -177,6 +177,18 @@ object RuleEngine {
         }
     }
 
+    fun fireType(context: Context, type: TriggerType) =
+        match(context) { it.trigger == type }
+
+    fun onPackageEvent(context: Context, type: TriggerType, packageName: String) {
+        match(context) {
+            it.trigger == type && (
+                it.triggerParam.isBlank() ||
+                    it.triggerParam.equals(packageName, ignoreCase = true)
+            )
+        }
+    }
+
     private fun fire(context: Context, type: TriggerType) =
         match(context) { it.trigger == type }
 
@@ -371,7 +383,78 @@ object RuleEngine {
                 val on = action.param.lowercase() !in setOf("off", "false", "0")
                 Elevated.setAirplane(on, preferShizuku, allowSu)
             }
+            ActionType.MEDIA_PREV -> mediaKey(context, android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS)
+            ActionType.MEDIA_PLAY_PAUSE -> mediaKey(context, android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+            ActionType.ALARM_VOLUME -> setStreamPct(context, AudioManager.STREAM_ALARM, action.param)
+            ActionType.RING_VOLUME -> setStreamPct(context, AudioManager.STREAM_RING, action.param)
+            ActionType.DND_MODE -> {
+                val nm = context.getSystemService(NotificationManager::class.java)
+                if (Build.VERSION.SDK_INT >= 23 && nm.isNotificationPolicyAccessGranted) {
+                    val on = action.param.lowercase() !in setOf("off", "false", "0")
+                    nm.setInterruptionFilter(
+                        if (on) NotificationManager.INTERRUPTION_FILTER_NONE
+                        else NotificationManager.INTERRUPTION_FILTER_ALL,
+                    )
+                } else {
+                    SettingsStore(context).appendLog("ERR DND: grant Do Not Disturb access")
+                }
+            }
+            ActionType.SPEAK_TTS -> {
+                val say = action.text.ifBlank { action.param }.ifBlank { rule.name }
+                android.os.Handler(context.mainLooper).post {
+                    try {
+                        val tts = android.speech.tts.TextToSpeech(context) { st ->
+                            /* engine ready async; best-effort */
+                        }
+                        tts.speak(say, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "latch")
+                    } catch (_: Exception) { }
+                }
+            }
+            ActionType.OPEN_APP_SETTINGS -> {
+                val pkg = action.param.trim().ifBlank { context.packageName }
+                val i = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", pkg, null)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(i)
+            }
+            ActionType.OPEN_SYSTEM_SETTINGS -> {
+                context.startActivity(
+                    Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }
+            ActionType.HTTP_GET -> {
+                val url = action.param.trim().ifBlank { action.text.trim() }
+                if (url.startsWith("http")) {
+                    thread {
+                        try {
+                            val c = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+                            c.connectTimeout = 8000
+                            c.readTimeout = 8000
+                            c.requestMethod = "GET"
+                            val code = c.responseCode
+                            SettingsStore(context).appendLog("HTTP $code $url")
+                            c.disconnect()
+                        } catch (e: Exception) {
+                            SettingsStore(context).appendLog("HTTP ERR ${e.message}")
+                        }
+                    }
+                }
+            }
         }
+    }
+
+    private fun mediaKey(context: Context, keyCode: Int) {
+        val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        am.dispatchMediaKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode))
+        am.dispatchMediaKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode))
+    }
+
+    private fun setStreamPct(context: Context, stream: Int, param: String) {
+        val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val max = am.getStreamMaxVolume(stream)
+        val pct = param.toIntOrNull()?.coerceIn(0, 100) ?: return
+        am.setStreamVolume(stream, (pct / 100f * max).toInt(), 0)
     }
 
     /** Settings self-test: run pure logic checks + permission snapshot. */
