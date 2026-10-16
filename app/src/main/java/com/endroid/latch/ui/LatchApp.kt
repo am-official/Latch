@@ -170,9 +170,8 @@ fun LatchApp(onThemeChanged: () -> Unit = {}) {
         Screen.Settings -> SettingsScreen(
             onBack = { screen = Screen.List },
             onShowText = { title, text -> dialogTitle = title; dialogText = text },
-            onImported = { reload(,
-            onThemeChanged = onThemeChanged
-        ) },
+            onImported = { reload() },
+            onThemeChanged = onThemeChanged,
         )
     }
 

@@ -62,11 +62,15 @@ object RuleEngine {
      * Per-rule last-fired state avoids spam while still reacting when the condition becomes true.
      */
     fun onBattery(context: Context, percent: Int, force: Boolean = false) {
+        val settings = SettingsStore(context)
+        if (settings.automationPaused) return
+        val activeProfile = settings.activeProfileId
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val prev = prefs.getInt("bat_pct", -1)
         prefs.edit().putInt("bat_pct", percent).apply()
 
         RuleStore(context).load().filter { it.enabled }.forEach { rule ->
+            if (rule.profileId.isNotBlank() && rule.profileId != "default" && rule.profileId != activeProfile) return@forEach
             val below = when (rule.trigger) {
                 TriggerType.BATTERY_BELOW -> true
                 TriggerType.BATTERY_ABOVE -> false
@@ -201,39 +205,29 @@ object RuleEngine {
         val activeProfile = settings.activeProfileId
         val all = RuleStore(context).load()
         for (rule in all) {
-            if (!rule.enabled) {
-                continue
-            }
+            if (!rule.enabled) continue
             if (rule.profileId.isNotBlank() && rule.profileId != "default" && rule.profileId != activeProfile) {
                 settings.appendWhy("SKIP ${rule.name}: profile ${rule.profileId} != $activeProfile")
                 continue
             }
-            if (!pred(rule)) {
-                settings.appendWhy("SKIP ${rule.name}: trigger mismatch")
-                continue
-            }
+            if (!pred(rule)) continue
             if (!Conditions.holds(context, rule)) {
                 settings.appendWhy("SKIP ${rule.name}: condition not met (${rule.condition}/${rule.condition2})")
                 continue
             }
-            if (rule.cooldownSec > 0) {
-                val last = lastFire[rule.id] ?: rule.lastFiredMs
-                if (System.currentTimeMillis() - last < rule.cooldownSec * 1000L) {
-                    settings.appendWhy("SKIP ${rule.name}: cooldown ${rule.cooldownSec}s")
-                    continue
-                }
+            if (!cooldownOk(context, rule)) {
+                settings.appendWhy("SKIP ${rule.name}: cooldown ${rule.cooldownSec}s")
+                continue
             }
-            lastFire[rule.id] = System.currentTimeMillis()
-            // persist last fire
             try {
                 val store = RuleStore(context)
-                val list = store.load().map {
-                    if (it.id == rule.id) it.copy(lastFiredMs = lastFire[rule.id]!!) else it
-                }
-                store.save(list)
+                val now = System.currentTimeMillis()
+                store.save(store.load().map {
+                    if (it.id == rule.id) it.copy(lastFiredMs = now) else it
+                })
             } catch (_: Exception) { }
             settings.appendLog("FIRE ${rule.name}")
-            runRule(context, rule)
+            run(context, rule)
         }
     }
 
