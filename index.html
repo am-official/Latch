@@ -8,27 +8,30 @@
 <meta name="theme-color" content="#14B8A0"/>
 <link rel="canonical" href="https://wized2.github.io/Latch/"/>
 <link rel="icon" type="image/svg+xml" href="assets/latch-icon-preview.svg"/>
-<link rel="apple-touch-icon" href="assets/latch-icon-preview.svg"/>
 <meta property="og:title" content="Latch — privacy-first Android automation"/>
 <meta property="og:description" content="Local if/then rules. No cloud. Optional Shizuku."/>
-<meta property="og:image" content="https://wized2.github.io/Latch/assets/latch-icon-preview.svg"/>
+<meta property="og:image" content="https://wized2.github.io/Latch/assets/screenshots/01_home.png"/>
 <style>
 :root{--bg:#0e1515;--fg:#e8f3f2;--accent:#14B8A0;--card:#1a2222;--mint:#F1FFFB}
 @media(prefers-color-scheme:light){:root{--bg:#f1fffb;--fg:#0a2a28;--accent:#0A7F73;--card:#fff;--mint:#e8faf6}}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--fg);line-height:1.5}
-main{max-width:720px;margin:0 auto;padding:2rem 1.25rem}
+main{max-width:900px;margin:0 auto;padding:2rem 1.25rem}
 .hero{display:flex;gap:1.25rem;align-items:center;flex-wrap:wrap}
-.hero img{width:96px;height:96px;border-radius:22px;background:var(--mint);box-shadow:0 8px 24px rgba(20,184,160,.25)}
-h1{font-size:2rem;margin:0 0 .35rem}a{color:var(--accent)}
+.hero .logo{width:96px;height:96px;border-radius:22px;background:var(--mint);box-shadow:0 8px 24px rgba(20,184,160,.25)}
+h1{font-size:2rem;margin:0 0 .35rem}h2{font-size:1.25rem;margin:1.75rem 0 .75rem}a{color:var(--accent)}
 .card{background:var(--card);border-radius:16px;padding:1.25rem;margin:1rem 0}
 .btn{display:inline-block;background:var(--accent);color:#00332e;padding:.75rem 1.25rem;border-radius:999px;text-decoration:none;font-weight:600}
 .btn.ghost{background:transparent;border:2px solid var(--accent);color:var(--accent);margin-left:.5rem}
+.shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin:1rem 0}
+.shots figure{margin:0;background:var(--card);border-radius:16px;padding:.6rem;overflow:hidden}
+.shots img{width:100%;height:auto;border-radius:12px;display:block;background:#000}
+.shots figcaption{font-size:.8rem;text-align:center;margin-top:.4rem;color:var(--fg);opacity:.85}
 </style>
 </head>
 <body>
 <main>
 <div class="hero">
-  <img src="assets/latch-icon-preview.svg" width="96" height="96" alt="Latch app icon"/>
+  <img class="logo" src="assets/latch-icon-preview.svg" width="96" height="96" alt="Latch app icon"/>
   <div>
     <h1>Latch</h1>
     <p style="margin:0">Privacy-first Android automation — local if/then rules, no cloud, no trackers. Optional Shizuku / root.</p>
@@ -38,13 +41,35 @@ h1{font-size:2rem;margin:0 0 .35rem}a{color:var(--accent)}
   <a class="btn" href="https://github.com/wized2/Latch/releases/latest">Download APK</a>
   <a class="btn ghost" href="https://github.com/wized2/Latch">GitHub</a>
 </p>
+
+<h2>Screenshots</h2>
+<p style="opacity:.85;margin:0">Captured on Android emulator (API 29) via <a href="https://github.com/wized2/Latch-Screenshots">Latch-Screenshots</a> CI.</p>
+<div class="shots">
+  <figure>
+    <img src="assets/screenshots/01_home.png" alt="Latch home — rules list" loading="lazy"/>
+    <figcaption>Home</figcaption>
+  </figure>
+  <figure>
+    <img src="assets/screenshots/02_settings.png" alt="Latch settings" loading="lazy"/>
+    <figcaption>Settings</figcaption>
+  </figure>
+  <figure>
+    <img src="assets/screenshots/03_settings_scrolled.png" alt="Latch settings scrolled" loading="lazy"/>
+    <figcaption>Settings (more)</figcaption>
+  </figure>
+  <figure>
+    <img src="assets/screenshots/04_edit_or_create.png" alt="Latch create or edit rule" loading="lazy"/>
+    <figcaption>Create / edit</figcaption>
+  </figure>
+</div>
+
 <div class="card">
 <strong>Features</strong>
 <ul>
 <li>Sticky monitor + watchdog so rules keep running</li>
 <li>Profiles (Home / Work / Sleep), variables (%battery, %ssid…)</li>
-<li>Light / dark / system theme + seed colors</li>
-<li>Import/export recipes · Why-didn’t-fire log</li>
+<li>Light / dark / system theme + seed colors + AMOLED</li>
+<li>Import/export recipes · Why-didn’t-fire log · quick templates</li>
 </ul>
 </div>
 <p>Related: <a href="https://github.com/wized2/Fern">Fern</a> system monitor</p>

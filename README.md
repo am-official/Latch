@@ -1,5 +1,14 @@
 # Latch
 
+## Screenshots
+
+| Home | Settings | Settings (more) | Create / edit |
+|------|----------|-----------------|---------------|
+| ![Home](docs/screenshots/01_home.png) | ![Settings](docs/screenshots/02_settings.png) | ![Settings more](docs/screenshots/03_settings_scrolled.png) | ![Edit](docs/screenshots/04_edit_or_create.png) |
+
+Emulator captures from [Latch-Screenshots](https://github.com/wized2/Latch-Screenshots) (Actions → **Capture Latch screenshots**).
+
+
 <p align="center"><img src="assets/latch-icon-preview.svg" width="120" alt="Latch icon"/></p>
 
 
