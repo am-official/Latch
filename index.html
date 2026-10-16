@@ -5,24 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Latch — privacy-first Android automation</title>
 <meta name="description" content="Latch is a FOSS Tasker-style automation app for Android. Local if/then rules, no cloud, optional Shizuku. Material You themes."/>
-<meta name="theme-color" content="#006A6A"/>
+<meta name="theme-color" content="#14B8A0"/>
 <link rel="canonical" href="https://wized2.github.io/Latch/"/>
+<link rel="icon" type="image/svg+xml" href="assets/latch-icon-preview.svg"/>
+<link rel="apple-touch-icon" href="assets/latch-icon-preview.svg"/>
+<meta property="og:title" content="Latch — privacy-first Android automation"/>
+<meta property="og:description" content="Local if/then rules. No cloud. Optional Shizuku."/>
+<meta property="og:image" content="https://wized2.github.io/Latch/assets/latch-icon-preview.svg"/>
 <style>
-:root{--bg:#0e1515;--fg:#e8f3f2;--accent:#80d5d4;--card:#1a2222}
-@media(prefers-color-scheme:light){:root{--bg:#f4fbfa;--fg:#102020;--accent:#006a6a;--card:#fff}}
+:root{--bg:#0e1515;--fg:#e8f3f2;--accent:#14B8A0;--card:#1a2222;--mint:#F1FFFB}
+@media(prefers-color-scheme:light){:root{--bg:#f1fffb;--fg:#0a2a28;--accent:#0A7F73;--card:#fff;--mint:#e8faf6}}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--fg);line-height:1.5}
 main{max-width:720px;margin:0 auto;padding:2rem 1.25rem}
-h1{font-size:2rem;margin:0 0 .5rem}a{color:var(--accent)}
+.hero{display:flex;gap:1.25rem;align-items:center;flex-wrap:wrap}
+.hero img{width:96px;height:96px;border-radius:22px;background:var(--mint);box-shadow:0 8px 24px rgba(20,184,160,.25)}
+h1{font-size:2rem;margin:0 0 .35rem}a{color:var(--accent)}
 .card{background:var(--card);border-radius:16px;padding:1.25rem;margin:1rem 0}
-.btn{display:inline-block;background:var(--accent);color:#003;padding:.75rem 1.25rem;border-radius:999px;text-decoration:none;font-weight:600}
+.btn{display:inline-block;background:var(--accent);color:#00332e;padding:.75rem 1.25rem;border-radius:999px;text-decoration:none;font-weight:600}
+.btn.ghost{background:transparent;border:2px solid var(--accent);color:var(--accent);margin-left:.5rem}
 </style>
 </head>
 <body>
 <main>
-<h1>Latch</h1>
-<p>Privacy-first Android automation — local if/then rules, no cloud, no trackers. Optional Shizuku / root.</p>
-<p><a class="btn" href="https://github.com/wized2/Latch/releases/latest">Download APK</a>
-<a class="btn" href="https://github.com/wized2/Latch" style="margin-left:.5rem;background:transparent;border:2px solid var(--accent);color:var(--accent)">GitHub</a></p>
+<div class="hero">
+  <img src="assets/latch-icon-preview.svg" width="96" height="96" alt="Latch app icon"/>
+  <div>
+    <h1>Latch</h1>
+    <p style="margin:0">Privacy-first Android automation — local if/then rules, no cloud, no trackers. Optional Shizuku / root.</p>
+  </div>
+</div>
+<p style="margin-top:1.5rem">
+  <a class="btn" href="https://github.com/wized2/Latch/releases/latest">Download APK</a>
+  <a class="btn ghost" href="https://github.com/wized2/Latch">GitHub</a>
+</p>
 <div class="card">
 <strong>Features</strong>
 <ul>

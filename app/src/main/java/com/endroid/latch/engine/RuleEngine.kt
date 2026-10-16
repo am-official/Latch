@@ -271,7 +271,7 @@ object RuleEngine {
                 val title = Variables.expand(context, action.title).ifBlank { rule.name }
                 val body = Variables.expand(context, action.text).ifBlank { rule.triggerSummary() }
                 val notif = NotificationCompat.Builder(context, CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_notification)
+                    .setSmallIcon(R.drawable.ic_stat_latch)
                     .setContentTitle(title).setContentText(body)
                     .setStyle(NotificationCompat.BigTextStyle().bigText(body))
                     .setAutoCancel(true).build()

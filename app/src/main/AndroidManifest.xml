@@ -116,7 +116,7 @@
         <service
             android:name=".tile.PauseTileService"
             android:exported="true"
-            android:icon="@drawable/ic_notification"
+            android:icon="@drawable/ic_stat_latch"
             android:label="Latch pause"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>

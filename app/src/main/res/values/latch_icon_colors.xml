@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="latch_icon_bg">#FFF1FFFB</color>
+    <color name="latch_icon_teal_light">#FF3FE0C5</color>
+    <color name="latch_icon_teal">#FF14B8A0</color>
+    <color name="latch_icon_teal_dark">#FF0A7F73</color>
+    <!-- Android 12+ splash background -->
+    <color name="latch_splash_bg">#FFF1FFFB</color>
+</resources>

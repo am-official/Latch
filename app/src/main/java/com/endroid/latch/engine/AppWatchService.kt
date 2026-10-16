@@ -34,7 +34,7 @@ class AppWatchService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         RuleEngine.ensureChannel(this)
         val notif: Notification = NotificationCompat.Builder(this, RuleEngine.CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R.drawable.ic_stat_latch)
             .setContentTitle(getString(R.string.app_watch_title))
             .setContentText(getString(R.string.app_watch_text))
             .setOngoing(true)

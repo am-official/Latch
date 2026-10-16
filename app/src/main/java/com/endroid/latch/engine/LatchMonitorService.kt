@@ -54,7 +54,7 @@ class LatchMonitorService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val notif: Notification = NotificationCompat.Builder(this, MONITOR_CHANNEL)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R.drawable.ic_stat_latch)
             .setContentTitle(getString(R.string.monitor_title))
             .setContentText(getString(R.string.monitor_text))
             .setOngoing(true)

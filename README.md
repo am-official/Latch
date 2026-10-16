@@ -1,5 +1,8 @@
 # Latch
 
+<p align="center"><img src="assets/latch-icon-preview.svg" width="120" alt="Latch icon"/></p>
+
+
 [![Build & Release](https://github.com/wized2/Latch/actions/workflows/build.yml/badge.svg)](https://github.com/wized2/Latch/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
