@@ -193,9 +193,48 @@ object RuleEngine {
         match(context) { it.trigger == type }
 
     private fun match(context: Context, pred: (Rule) -> Boolean) {
-        RuleStore(context).load()
-            .filter { eligible(context, it) && pred(it) }
-            .forEach { run(context, it) }
+        val settings = SettingsStore(context)
+        if (settings.automationPaused) {
+            settings.appendWhy("SKIP all: automation paused")
+            return
+        }
+        val activeProfile = settings.activeProfileId
+        val all = RuleStore(context).load()
+        for (rule in all) {
+            if (!rule.enabled) {
+                continue
+            }
+            if (rule.profileId.isNotBlank() && rule.profileId != "default" && rule.profileId != activeProfile) {
+                settings.appendWhy("SKIP ${rule.name}: profile ${rule.profileId} != $activeProfile")
+                continue
+            }
+            if (!pred(rule)) {
+                settings.appendWhy("SKIP ${rule.name}: trigger mismatch")
+                continue
+            }
+            if (!Conditions.holds(context, rule)) {
+                settings.appendWhy("SKIP ${rule.name}: condition not met (${rule.condition}/${rule.condition2})")
+                continue
+            }
+            if (rule.cooldownSec > 0) {
+                val last = lastFire[rule.id] ?: rule.lastFiredMs
+                if (System.currentTimeMillis() - last < rule.cooldownSec * 1000L) {
+                    settings.appendWhy("SKIP ${rule.name}: cooldown ${rule.cooldownSec}s")
+                    continue
+                }
+            }
+            lastFire[rule.id] = System.currentTimeMillis()
+            // persist last fire
+            try {
+                val store = RuleStore(context)
+                val list = store.load().map {
+                    if (it.id == rule.id) it.copy(lastFiredMs = lastFire[rule.id]!!) else it
+                }
+                store.save(list)
+            } catch (_: Exception) { }
+            settings.appendLog("FIRE ${rule.name}")
+            runRule(context, rule)
+        }
     }
 
     fun run(context: Context, rule: Rule) {
@@ -229,14 +268,14 @@ object RuleEngine {
                 if (ms > 0) Thread.sleep(ms)
             }
             ActionType.TOAST -> {
-                val msg = action.text.ifBlank { rule.name }
+                val msg = Variables.expand(context, action.text).ifBlank { rule.name }
                 android.os.Handler(context.mainLooper).post {
                     Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                 }
             }
             ActionType.NOTIFY -> {
-                val title = action.title.ifBlank { rule.name }
-                val body = action.text.ifBlank { rule.triggerSummary() }
+                val title = Variables.expand(context, action.title).ifBlank { rule.name }
+                val body = Variables.expand(context, action.text).ifBlank { rule.triggerSummary() }
                 val notif = NotificationCompat.Builder(context, CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_notification)
                     .setContentTitle(title).setContentText(body)
@@ -265,7 +304,7 @@ object RuleEngine {
                 }
             }
             ActionType.OPEN_URL -> {
-                val url = action.param.trim().ifBlank { action.text.trim() }
+                val url = Variables.expand(context, action.param.trim().ifBlank { action.text.trim() })
                 if (url.isNotEmpty()) {
                     context.startActivity(
                         Intent(Intent.ACTION_VIEW, Uri.parse(url))
@@ -302,7 +341,7 @@ object RuleEngine {
                 }
             }
             ActionType.SHELL -> {
-                val cmd = action.param.trim().ifBlank { action.text.trim() }
+                val cmd = Variables.expand(context, action.param.trim().ifBlank { action.text.trim() })
                 if (cmd.isEmpty()) return
                 Elevated.runShell(cmd, preferShizuku, allowSu)
             }
@@ -336,9 +375,10 @@ object RuleEngine {
                 }
             }
             ActionType.CLIPBOARD -> {
+                val clipText = Variables.expand(context, action.text)
                 val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                 cm.setPrimaryClip(
-                    android.content.ClipData.newPlainText("latch", action.text.ifBlank { action.param }),
+                    android.content.ClipData.newPlainText("latch", clipText.ifBlank { action.param }),
                 )
             }
             ActionType.FLASHLIGHT -> {

@@ -70,6 +70,9 @@ import com.endroid.latch.data.Rule
 import com.endroid.latch.data.RuleAction
 import com.endroid.latch.data.RuleStore
 import com.endroid.latch.data.SettingsStore
+import com.endroid.latch.data.ThemeMode
+import com.endroid.latch.data.ProfileStore
+import com.endroid.latch.data.Profile
 import com.endroid.latch.data.TriggerType
 import com.endroid.latch.engine.AppWatchService
 import com.endroid.latch.engine.Elevated
@@ -86,7 +89,7 @@ private sealed class Screen {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LatchApp() {
+fun LatchApp(onThemeChanged: () -> Unit = {}) {
     val context = LocalContext.current
     val store = remember { RuleStore(context) }
     var rules by remember { mutableStateOf(store.load()) }
@@ -167,7 +170,9 @@ fun LatchApp() {
         Screen.Settings -> SettingsScreen(
             onBack = { screen = Screen.List },
             onShowText = { title, text -> dialogTitle = title; dialogText = text },
-            onImported = { reload() },
+            onImported = { reload(,
+            onThemeChanged = onThemeChanged
+        ) },
         )
     }
 
@@ -236,6 +241,9 @@ private fun EditRuleScreen(initial: Rule?, onBack: () -> Unit, onSave: (Rule) ->
     var cooldown by remember { mutableIntStateOf(initial?.cooldownSec ?: 0) }
     var notes by remember { mutableStateOf(initial?.notes ?: "") }
     var tag by remember { mutableStateOf(initial?.tag ?: "") }
+    var profileId by remember { mutableStateOf(initial?.profileId ?: "default") }
+    var condition2 by remember { mutableStateOf(initial?.condition2 ?: ConditionType.NONE) }
+    var conditionMode by remember { mutableStateOf(initial?.conditionMode ?: "AND") }
     var actions by remember {
         mutableStateOf(initial?.actions?.ifEmpty { listOf(RuleAction(ActionType.NOTIFY)) }
             ?: listOf(RuleAction(ActionType.NOTIFY)))
@@ -319,8 +327,12 @@ private fun EditRuleScreen(initial: Rule?, onBack: () -> Unit, onSave: (Rule) ->
                 else -> Unit
             }
 
-            EnumDropdown("Also require (AND)", ConditionType.entries, condition) { condition = it }
-            if (condition == ConditionType.BATTERY_BELOW || condition == ConditionType.BATTERY_ABOVE) {
+            EnumStringDropdown("Profile", listOf("default", "home", "work", "sleep"), profileId) { profileId = it }
+            EnumDropdown("Condition A", ConditionType.entries, condition) { condition = it }
+            EnumDropdown("Condition B", ConditionType.entries, condition2) { condition2 = it }
+            EnumStringDropdown("A/B logic", listOf("AND", "OR"), conditionMode) { conditionMode = it }
+            if (condition == ConditionType.BATTERY_BELOW || condition == ConditionType.BATTERY_ABOVE ||
+                condition2 == ConditionType.BATTERY_BELOW || condition2 == ConditionType.BATTERY_ABOVE) {
                 IntField("Condition battery %", conditionValue) { conditionValue = it.coerceIn(1, 100) }
             }
 
@@ -355,6 +367,8 @@ private fun EditRuleScreen(initial: Rule?, onBack: () -> Unit, onSave: (Rule) ->
                             triggerParam = triggerParam,
                             condition = condition, conditionValue = conditionValue,
                             actions = actions, cooldownSec = cooldown, notes = notes, tag = tag,
+                            profileId = profileId, conditionMode = conditionMode, condition2 = condition2,
+                            lastFiredMs = initial?.lastFiredMs ?: 0L,
                         ),
                     )
                 },
@@ -499,6 +513,7 @@ private fun SettingsScreen(
     onBack: () -> Unit,
     onShowText: (String, String) -> Unit,
     onImported: () -> Unit,
+    onThemeChanged: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val settings = remember { SettingsStore(context) }
@@ -510,6 +525,13 @@ private fun SettingsScreen(
     val perms = remember(tick) { PermissionStatus.all(context) }
     var importText by remember { mutableStateOf("") }
     var showImport by remember { mutableStateOf(false) }
+    var themeMode by remember { mutableStateOf(settings.themeMode) }
+    var seedColor by remember { mutableStateOf(settings.seedColor) }
+    var paused by remember { mutableStateOf(settings.automationPaused) }
+    var debugWhy by remember { mutableStateOf(settings.debugWhy) }
+    val profiles = remember { ProfileStore(context).load() }
+    var activeProfile by remember { mutableStateOf(settings.activeProfileId) }
+
 
     val notifPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { tick++ }
     val multiPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { tick++ }
@@ -612,6 +634,83 @@ private fun SettingsScreen(
                 Text("Do Not Disturb access (for DND action)")
             }
 
+            Text("Appearance", style = MaterialTheme.typography.titleMedium)
+            EnumDropdown("Theme", ThemeMode.entries, themeMode) {
+                themeMode = it
+                settings.themeMode = it
+                onThemeChanged()
+            }
+            Text("Seed color", style = MaterialTheme.typography.labelLarge)
+            val presets = listOf(
+                0xFF006A6AL to "Teal",
+                0xFF1565C0L to "Blue",
+                0xFF2E7D32L to "Green",
+                0xFF6A1B9AL to "Purple",
+                0xFFC62828L to "Red",
+                0xFFEF6C00L to "Orange",
+                0xFF00838FL to "Cyan",
+                0xFF37474FL to "Blue grey",
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                presets.forEach { (c, label) ->
+                    OutlinedButton(onClick = {
+                        seedColor = c
+                        settings.seedColor = c
+                        onThemeChanged()
+                    }) { Text(label) }
+                }
+            }
+
+            Text("Profiles", style = MaterialTheme.typography.titleMedium)
+            EnumStringDropdown(
+                "Active profile",
+                profiles.map { it.id },
+                activeProfile,
+            ) {
+                activeProfile = it
+                settings.activeProfileId = it
+            }
+            Text(
+                profiles.joinToString { "${it.name} (${it.id})" },
+                style = MaterialTheme.typography.bodySmall,
+            )
+            SettingSwitch(
+                "Pause automation",
+                "Quick Settings tile can toggle this too",
+                paused,
+            ) {
+                paused = it
+                settings.automationPaused = it
+            }
+            SettingSwitch(
+                "Why didn’t fire log",
+                "Record skips (cooldown, condition, profile)",
+                debugWhy,
+            ) {
+                debugWhy = it
+                settings.debugWhy = it
+            }
+
+            Text("Monitor health", style = MaterialTheme.typography.titleMedium)
+            val aliveMs = settings.lastMonitorStartMs
+            val alive = aliveMs > 0 && System.currentTimeMillis() - aliveMs < 20 * 60 * 1000L
+            Text(
+                if (alive) "Monitor seen recently · heals=${settings.monitorHeals}"
+                else "Monitor not seen recently — open Latch or disable battery optimization",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                "OEM tip: Xiaomi/Huawei/Samsung — lock Latch in recents, allow autostart, disable battery optimization for Latch.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Text("Variables in actions", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Use %battery %ssid %time %date %profile in notify, toast, shell, URL, clipboard.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+
             Text("Automation options", style = MaterialTheme.typography.titleMedium)
             SettingSwitch(
                 "Prefer Shizuku for shell",
@@ -649,6 +748,10 @@ private fun SettingsScreen(
                 onClick = { onShowText("Run log", settings.runLog.ifBlank { "(empty)" }) },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("View run log") }
+            OutlinedButton(
+                onClick = { onShowText("Why didn’t fire", settings.whyLog.ifBlank { "(empty)" }) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Why didn’t fire log") }
 
             Text(
                 "Plugin:\ncom.endroid.latch.api.FIRE_TRIGGER (trigger=…)\n" +

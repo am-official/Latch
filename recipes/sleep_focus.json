@@ -1,0 +1,21 @@
+{
+  "rules": [
+    {
+      "id": "recipe-sleep",
+      "name": "Sleep focus",
+      "enabled": true,
+      "trigger": "TIME_DAILY",
+      "triggerValue": 23,
+      "triggerValue2": 0,
+      "profileId": "sleep",
+      "condition": "NONE",
+      "cooldownSec": 3600,
+      "tag": "recipe",
+      "actions": [
+        {"type": "RINGER_MODE", "text": "", "title": "", "ringerMode": "VIBRATE", "param": ""},
+        {"type": "DND_MODE", "text": "", "title": "", "ringerMode": "NORMAL", "param": "on"},
+        {"type": "NOTIFY", "text": "Sleep profile · %time", "title": "Latch", "ringerMode": "NORMAL", "param": ""}
+      ]
+    }
+  ]
+}

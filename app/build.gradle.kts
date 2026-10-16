@@ -12,10 +12,10 @@ android {
         applicationId = "com.endroid.latch"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "0.5.0"
+        versionCode = 8
+        versionName = "0.6.0"
         resourceConfigurations += listOf("en")
-        buildConfigField("String", "VERSION_NAME", "\"0.5.0\"")
+        buildConfigField("String", "VERSION_NAME", "\"0.6.0\"")
     }
 
     val releaseStoreFile = System.getenv("RELEASE_STORE_FILE")

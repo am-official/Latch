@@ -76,6 +76,9 @@ class LatchMonitorService : Service() {
         }
         registerAll()
         scheduleWatchdog(this)
+        val st = com.endroid.latch.data.SettingsStore(this)
+        st.lastMonitorStartMs = System.currentTimeMillis()
+        st.monitorHeals = st.monitorHeals + 1
         val pct = PowerReceiver.batteryPercent(this, null)
         if (pct >= 0) RuleEngine.onBattery(this, pct, force = false)
         return START_STICKY

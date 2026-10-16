@@ -1,19 +1,23 @@
-# Latch 0.5.0
+# Latch 0.6.0 — roadmap sprint
 
-## Critical: monitor stays alive
-- Dedicated **monitor notification channel** (ongoing service)
-- **Watchdog alarm** every ~15 minutes restarts the service if the OS kills it
-- Restarts after task removed / service destroy
-- Settings: **Disable battery optimization** (strongly recommended)
-- Do Not Disturb access shortcut for DND actions
+## Trust
+- Monitor heal counter + “last seen” status
+- OEM battery tips (Xiaomi / Huawei / Samsung)
+- Why-didn’t-fire log (profile, condition, cooldown)
+- Last-fire time on each rule
+- Pause automation (Settings + Quick Settings tile)
 
-## Clearer action fields
-No more vague “Parameter” — each action has labeled fields, placeholders, and on/off pickers.
+## Daily use
+- Profiles: Default / Home / Work / Sleep
+- Variables: %battery %ssid %time %date %profile
+- Dual conditions with AND/OR
+- Import / export recipes (`recipes/` samples)
 
-## New triggers
-User unlocked · Battery saver on/off · App installed/removed · Storage low · Dock · Shutdown
+## Appearance
+- Light / Dark / System theme
+- Seed color presets (Material-style schemes)
 
-## New actions
-Media previous / play-pause · Alarm & ring volume · DND · Text-to-speech · Open app/system settings · HTTP GET
-
-Leave at least one rule enabled and turn off battery optimization so automation keeps running overnight.
+## Ecosystem
+- Plugin broadcasts documented in Settings
+- Website `index.html` for GitHub Pages
+- Recipe JSON packs in repo

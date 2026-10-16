@@ -116,6 +116,10 @@ data class Rule(
     val cooldownSec: Int = 0,
     val notes: String = "",
     val tag: String = "",
+    val profileId: String = "default",
+    val lastFiredMs: Long = 0L,
+    val conditionMode: String = "AND", // AND | OR when condition2 used
+    val condition2: ConditionType = ConditionType.NONE,
 ) {
     fun triggerSummary(): String {
         val base = when (trigger) {
@@ -160,6 +164,8 @@ data class Rule(
         .put("triggerParam", triggerParam)
         .put("condition", condition.name).put("conditionValue", conditionValue)
         .put("cooldownSec", cooldownSec).put("notes", notes).put("tag", tag)
+        .put("profileId", profileId).put("lastFiredMs", lastFiredMs)
+        .put("conditionMode", conditionMode).put("condition2", condition2.name)
         .put("actions", JSONArray().also { a -> actions.forEach { a.put(it.toJson()) } })
 
     companion object {
@@ -181,6 +187,11 @@ data class Rule(
                 actions = acts,
                 cooldownSec = o.optInt("cooldownSec", 0),
                 notes = o.optString("notes"), tag = o.optString("tag"),
+                profileId = o.optString("profileId", "default"),
+                lastFiredMs = o.optLong("lastFiredMs", 0L),
+                conditionMode = o.optString("conditionMode", "AND"),
+                condition2 = runCatching { ConditionType.valueOf(o.optString("condition2", "NONE")) }
+                    .getOrDefault(ConditionType.NONE),
             )
         }
     }
