@@ -14,31 +14,33 @@ import java.util.Calendar
 
 object Conditions {
     fun holds(context: Context, rule: Rule): Boolean {
-        return when (rule.condition) {
-            ConditionType.NONE -> true
-            ConditionType.WIFI_ON -> wifiOn(context)
-            ConditionType.WIFI_OFF -> !wifiOn(context)
-            ConditionType.CHARGING -> charging(context)
-            ConditionType.NOT_CHARGING -> !charging(context)
-            ConditionType.SCREEN_ON -> screenOn(context)
-            ConditionType.SCREEN_OFF -> !screenOn(context)
-            ConditionType.BATTERY_BELOW -> batteryPct(context) <= rule.conditionValue.coerceAtLeast(1)
-            ConditionType.BATTERY_ABOVE -> batteryPct(context) >= rule.conditionValue.coerceAtLeast(1)
+        when (rule.condition) {
+            ConditionType.NONE -> return true
+            ConditionType.WIFI_ON -> return wifiOn(context)
+            ConditionType.WIFI_OFF -> return !wifiOn(context)
+            ConditionType.CHARGING -> return charging(context)
+            ConditionType.NOT_CHARGING -> return !charging(context)
+            ConditionType.SCREEN_ON -> return screenOn(context)
+            ConditionType.SCREEN_OFF -> return !screenOn(context)
+            ConditionType.BATTERY_BELOW ->
+                return batteryPct(context) <= rule.conditionValue.coerceAtLeast(1)
+            ConditionType.BATTERY_ABOVE ->
+                return batteryPct(context) >= rule.conditionValue.coerceAtLeast(1)
             ConditionType.DAY_WEEKDAY -> {
                 val d = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
-                d in Calendar.MONDAY..Calendar.FRIDAY
-            }
-            ConditionType.POWER_SAVE_ON -> {
-                val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-                pm.isPowerSaveMode
-            }
-            ConditionType.POWER_SAVE_OFF -> {
-                val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-                !pm.isPowerSaveMode
+                return d in Calendar.MONDAY..Calendar.FRIDAY
             }
             ConditionType.DAY_WEEKEND -> {
                 val d = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
-                d == Calendar.SATURDAY || d == Calendar.SUNDAY
+                return d == Calendar.SATURDAY || d == Calendar.SUNDAY
+            }
+            ConditionType.POWER_SAVE_ON -> {
+                val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+                return pm.isPowerSaveMode
+            }
+            ConditionType.POWER_SAVE_OFF -> {
+                val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+                return pm.isPowerSaveMode.not()
             }
         }
     }
