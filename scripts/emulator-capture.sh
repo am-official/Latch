@@ -7,9 +7,10 @@ adb shell settings put global transition_animation_scale 0
 adb shell settings put global animator_duration_scale 0
 APK=$(ls app/build/outputs/apk/debug/*-debug.apk | head -1)
 adb install -r -t "$APK"
-PKG=com.endroid.latch
+PKG=com.endroid.latch.debug
+ACT=com.endroid.latch.MainActivity
 adb shell am force-stop "$PKG" || true
-adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1
+adb shell am start -n "$PKG/$ACT"
 sleep 8
 mkdir -p screenshots
 adb exec-out screencap -p > screenshots/01_home.png
