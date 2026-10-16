@@ -42,3 +42,9 @@ com.endroid.latch.api.RUN_RULE       extra rule_id=<uuid>
 
 ## License
 MIT · Project Endroid
+
+## Related
+
+- **[Fern](https://github.com/wized2/Fern)** — Material You system monitor
+
+If Latch helps, a star makes it easier for others to find.
