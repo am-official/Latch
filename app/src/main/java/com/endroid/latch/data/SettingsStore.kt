@@ -37,6 +37,14 @@ class SettingsStore(context: Context) {
         get() = p.getLong("seed_color", 0xFF006A6AL)
         set(v) { p.edit().putLong("seed_color", v).apply() }
 
+    var amoledDark: Boolean
+        get() = p.getBoolean("amoled_dark", false)
+        set(v) { p.edit().putBoolean("amoled_dark", v).apply() }
+
+    var hapticOnFire: Boolean
+        get() = p.getBoolean("haptic_on_fire", true)
+        set(v) { p.edit().putBoolean("haptic_on_fire", v).apply() }
+
     var activeProfileId: String
         get() = p.getString("active_profile", "default") ?: "default"
         set(v) { p.edit().putString("active_profile", v).apply() }

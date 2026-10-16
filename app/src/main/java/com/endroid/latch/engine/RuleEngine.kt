@@ -226,6 +226,18 @@ object RuleEngine {
                     if (it.id == rule.id) it.copy(lastFiredMs = now) else it
                 })
             } catch (_: Exception) { }
+            if (settings.hapticOnFire) {
+                try {
+                    @Suppress("DEPRECATION")
+                    val vib = context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+                    if (android.os.Build.VERSION.SDK_INT >= 26) {
+                        vib?.vibrate(android.os.VibrationEffect.createOneShot(40, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+                    } else {
+                        @Suppress("DEPRECATION")
+                        vib?.vibrate(40)
+                    }
+                } catch (_: Exception) { }
+            }
             settings.appendLog("FIRE ${rule.name}")
             run(context, rule)
         }

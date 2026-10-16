@@ -143,6 +143,43 @@ fun LatchApp(onThemeChanged: () -> Unit = {}) {
                     )
                     Spacer(Modifier.height(16.dp))
                     Button(onClick = { screen = Screen.Edit(null) }) { Text("Create rule") }
+                    Spacer(Modifier.height(20.dp))
+                    Text("Quick templates", style = MaterialTheme.typography.labelLarge)
+                    Spacer(Modifier.height(8.dp))
+                    val templates = listOf(
+                        Rule(
+                            name = "Low battery saver",
+                            trigger = TriggerType.BATTERY_BELOW,
+                            triggerValue = 20,
+                            actions = listOf(
+                                RuleAction(ActionType.NOTIFY, title = "Battery low", text = "Battery at or below 20%"),
+                                RuleAction(ActionType.SET_BRIGHTNESS, param = "30"),
+                                RuleAction(ActionType.RINGER_MODE, ringerMode = RingerModeKind.VIBRATE),
+                            ),
+                        ),
+                        Rule(
+                            name = "Headphones → media volume",
+                            trigger = TriggerType.HEADPHONES_CONNECTED,
+                            actions = listOf(
+                                RuleAction(ActionType.MEDIA_VOLUME, param = "70"),
+                                RuleAction(ActionType.TOAST, text = "Headphones connected"),
+                            ),
+                        ),
+                        Rule(
+                            name = "Charger connected",
+                            trigger = TriggerType.CHARGER_CONNECTED,
+                            actions = listOf(
+                                RuleAction(ActionType.NOTIFY, title = "Charging", text = "Charger connected"),
+                                RuleAction(ActionType.TOAST, text = "Charging"),
+                            ),
+                        ),
+                    )
+                    templates.forEach { tmpl ->
+                        OutlinedButton(
+                            onClick = { store.upsert(tmpl); reload(); screen = Screen.Edit(tmpl) },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        ) { Text(tmpl.name) }
+                    }
                 }
             } else {
                 LazyColumn(
@@ -526,6 +563,8 @@ private fun SettingsScreen(
     var showImport by remember { mutableStateOf(false) }
     var themeMode by remember { mutableStateOf(settings.themeMode) }
     var seedColor by remember { mutableStateOf(settings.seedColor) }
+    var amoledDark by remember { mutableStateOf(settings.amoledDark) }
+    var hapticOnFire by remember { mutableStateOf(settings.hapticOnFire) }
     var paused by remember { mutableStateOf(settings.automationPaused) }
     var debugWhy by remember { mutableStateOf(settings.debugWhy) }
     val profiles = remember { ProfileStore(context).load() }
@@ -638,6 +677,37 @@ private fun SettingsScreen(
                 themeMode = it
                 settings.themeMode = it
                 onThemeChanged()
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("AMOLED black", style = MaterialTheme.typography.bodyLarge)
+                    Text("Pure black in dark theme", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked = amoledDark, onCheckedChange = {
+                    amoledDark = it
+                    settings.amoledDark = it
+                    onThemeChanged()
+                })
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Haptic on rule fire", style = MaterialTheme.typography.bodyLarge)
+                    Text("Vibrate briefly when a rule runs", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked = hapticOnFire, onCheckedChange = {
+                    hapticOnFire = it
+                    settings.hapticOnFire = it
+                })
             }
             Text("Seed color", style = MaterialTheme.typography.labelLarge)
             val presets = listOf(

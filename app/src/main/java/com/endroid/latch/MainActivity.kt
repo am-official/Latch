@@ -28,11 +28,13 @@ class MainActivity : ComponentActivity() {
             val store = remember { SettingsStore(this) }
             var themeMode by remember { mutableStateOf(store.themeMode) }
             var seed by remember { mutableStateOf(store.seedColor) }
-            LatchTheme(themeMode = themeMode, seedColor = seed) {
+            var amoled by remember { mutableStateOf(store.amoledDark) }
+            LatchTheme(themeMode = themeMode, seedColor = seed, amoledDark = amoled) {
                 LatchApp(
                     onThemeChanged = {
                         themeMode = store.themeMode
                         seed = store.seedColor
+                        amoled = store.amoledDark
                     },
                 )
             }
