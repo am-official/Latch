@@ -1,7 +1,7 @@
 # Latch
 
 <p align="center">
-  <img src="assets/latch-logo.svg" width="96" alt="Latch"/>
+  <img src="assets/latch-logo.svg" width="96" height="96" alt="Latch logo"/>
 </p>
 
 **Privacy-first Android automation** — local *if → then* rules. No account, no cloud, no ads, no trackers.
