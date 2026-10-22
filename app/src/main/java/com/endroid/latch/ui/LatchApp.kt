@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,6 +44,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
@@ -87,12 +90,13 @@ private sealed class Screen {
     data object Settings : Screen()
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun LatchApp(onThemeChanged: () -> Unit = {}) {
     val context = LocalContext.current
     val store = remember { RuleStore(context) }
     var rules by remember { mutableStateOf(store.load()) }
+    var ruleQuery by remember { mutableStateOf("") }
     var screen by remember { mutableStateOf<Screen>(Screen.List) }
     var dialogText by remember { mutableStateOf<String?>(null) }
     var dialogTitle by remember { mutableStateOf("") }
@@ -182,19 +186,47 @@ fun LatchApp(onThemeChanged: () -> Unit = {}) {
                     }
                 }
             } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 88.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.padding(padding),
-                ) {
-                    items(rules, key = { it.id }) { rule ->
-                        RuleCard(
-                            rule = rule,
-                            onToggle = { store.setEnabled(rule.id, it); reload() },
-                            onClick = { screen = Screen.Edit(rule) },
-                            onDelete = { store.delete(rule.id); reload() },
-                            onRun = { RuleEngine.run(context, rule) },
+                val q = ruleQuery.trim()
+                val visible = remember(rules, q) {
+                    val base = if (q.isEmpty()) rules
+                    else rules.filter {
+                        it.name.contains(q, ignoreCase = true) ||
+                            it.trigger.name.contains(q, ignoreCase = true)
+                    }
+                    base.sortedWith(compareByDescending<Rule> { it.enabled }.thenBy { it.name.lowercase() })
+                }
+                Column(Modifier.padding(padding)) {
+                    OutlinedTextField(
+                        value = ruleQuery,
+                        onValueChange = { ruleQuery = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        singleLine = true,
+                        label = { Text("Search rules") },
+                        placeholder = { Text("Name or trigger") },
+                    )
+                    if (visible.isEmpty()) {
+                        Text(
+                            "No rules match “$q”",
+                            modifier = Modifier.padding(24.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    } else {
+                        LazyColumn(
+                            contentPadding = PaddingValues(16.dp, 4.dp, 16.dp, 88.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            items(visible, key = { it.id }) { rule ->
+                                RuleCard(
+                                    rule = rule,
+                                    onToggle = { store.setEnabled(rule.id, it); reload() },
+                                    onClick = { screen = Screen.Edit(rule) },
+                                    onDelete = { store.delete(rule.id); reload() },
+                                    onRun = { RuleEngine.run(context, rule) },
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -544,6 +576,7 @@ private fun ActionEditor(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SettingsScreen(
     onBack: () -> Unit,
@@ -720,13 +753,22 @@ private fun SettingsScreen(
                 0xFF00838FL to "Cyan",
                 0xFF37474FL to "Blue grey",
             )
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 presets.forEach { (c, label) ->
-                    OutlinedButton(onClick = {
-                        seedColor = c
-                        settings.seedColor = c
-                        onThemeChanged()
-                    }) { Text(label) }
+                    val selected = seedColor == c
+                    FilterChip(
+                        selected = selected,
+                        onClick = {
+                            seedColor = c
+                            settings.seedColor = c
+                            onThemeChanged()
+                        },
+                        label = { Text(label) },
+                    )
                 }
             }
 
