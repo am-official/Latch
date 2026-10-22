@@ -76,7 +76,6 @@ com.endroid.latch.api.RUN_RULE       extra rule_id=<uuid>
 | Project | What |
 |---------|------|
 | **[Fern](https://github.com/wized2/Fern)** | Material You system monitor (CPU, RAM, battery, Shizuku) |
-| **[Subcord](https://github.com/wized2/Subcord)** | Discord mobile web translator |
 
 ## Why Latch?
 
