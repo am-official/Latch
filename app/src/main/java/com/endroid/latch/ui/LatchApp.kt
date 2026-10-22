@@ -576,7 +576,6 @@ private fun ActionEditor(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SettingsScreen(
     onBack: () -> Unit,
