@@ -59,7 +59,7 @@ jobs:
       - name: Unit tests
         run: |
           chmod +x gradlew
-          ./gradlew testDebugUnitTest --stacktrace
+          ./gradlew testStableDebugUnitTest --stacktrace
 
       - name: Build release APK
         env:
@@ -71,8 +71,8 @@ jobs:
           if [ "${{ steps.keystore.outputs.present }}" = "true" ]; then
             export RELEASE_STORE_FILE="$GITHUB_WORKSPACE/release.jks"
           fi
-          ./gradlew assembleRelease --stacktrace
-          ls -la app/build/outputs/apk/release/
+          ./gradlew assembleStableDebug assembleBetaDebug assembleStableRelease assembleBetaRelease --stacktrace
+          ls -la app/build/outputs/apk/stable/release/ app/build/outputs/apk/beta/release/ || true
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
