@@ -14,8 +14,23 @@ android {
         targetSdk = 35
         versionCode = 11
         versionName = "0.6.3"
-        resourceConfigurations += listOf("en")
-        buildConfigField("String", "VERSION_NAME", "\"0.6.1\"")
+        resourceConfigurations += listOf("en", "es", "de")
+        buildConfigField("String", "VERSION_NAME", "\"${defaultConfig.versionName}\"")
+    }
+
+
+    flavorDimensions += "channel"
+    productFlavors {
+        create("stable") {
+            dimension = "channel"
+            resValue("string", "app_channel_label", "stable")
+        }
+        create("beta") {
+            dimension = "channel"
+            applicationIdSuffix = ".beta"
+            versionNameSuffix = "-beta"
+            resValue("string", "app_channel_label", "beta")
+        }
     }
 
     val releaseStoreFile = System.getenv("RELEASE_STORE_FILE")

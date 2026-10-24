@@ -1,13 +1,10 @@
 ## Summary
-<!-- What does this change? -->
 
-## Type
-- [ ] Bug fix
-- [ ] Feature
-- [ ] Docs / metadata
-- [ ] Tests
+## Target
+- [ ] **`beta`** (default)
+- [ ] `main` (stable hotfix only)
 
 ## Checklist
-- [ ] `./gradlew test` passes
-- [ ] No secrets or trackers added
-- [ ] Strings externalized where user-visible
+- [ ] PR targets **beta** unless hotfix
+- [ ] Tests for RuleLogic / pure helpers when applicable
+- [ ] No INTERNET / trackers added

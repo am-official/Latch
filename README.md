@@ -61,6 +61,13 @@ com.endroid.latch.api.FIRE_TRIGGER   extra trigger=<string>
 com.endroid.latch.api.RUN_RULE       extra rule_id=<uuid>
 ```
 
+## Stable vs beta
+
+| Channel | Branch | Application id |
+|---------|--------|----------------|
+| Stable | `main` | `com.endroid.latch` |
+| Beta | `beta` | `com.endroid.latch.beta` |
+
 ## Install
 
 - [Latest release APK](https://github.com/wized2/Latch/releases/latest)
@@ -104,7 +111,16 @@ Import JSON from [`recipes/`](recipes/) (work Wi‑Fi silent, headphones → mus
 
 Tasker-class power without cloud accounts or trackers. Rules are plain local data; optional elevation is explicit.
 
+
 ## Contributing
+
+1. Read **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**.
+2. Work on **`beta`** and open PRs against **`beta`** (`com.endroid.latch.beta`).
+3. Grab a [good first issue](https://github.com/wized2/Latch/labels/good%20first%20issue).
+
+Spanish overview: [README.es.md](README.es.md).
+
+## Contributing detail
 
 PRs welcome — especially new triggers/actions, OEM battery tips, and accessibility.
 

@@ -1,16 +1,20 @@
 ---
 name: Bug report
-about: Rule or UI not working as expected
-labels: bug
+about: Something broken in Latch
+title: 'bug: '
 ---
+
+**Branch / build**
+- [ ] Stable (`main`)
+- [ ] Beta (`com.endroid.latch.beta`)
 
 **Device / Android**
 
-**Latch version**
 
-**Rule setup** (trigger + actions)
+**Steps**
 
-**What happened / expected**
 
-**Elevated access** (none / Shizuku / root)
+**Expected / actual**
 
+
+<!-- Code PRs → **beta** branch -->

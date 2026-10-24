@@ -78,7 +78,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Latch-release
-          path: app/build/outputs/apk/release/*.apk
+          path: app/build/outputs/apk/stable/release/*.apk
 
       - name: Version
         if: github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
@@ -92,7 +92,7 @@ jobs:
         if: github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
         run: |
           mkdir -p release-assets
-          cp app/build/outputs/apk/release/*.apk release-assets/Latch-release.apk
+          cp app/build/outputs/apk/stable/release/*.apk release-assets/Latch-release.apk
 
       - name: GitHub Release
         if: github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
