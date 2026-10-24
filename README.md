@@ -114,6 +114,9 @@ Tasker-class power without cloud accounts or trackers. Rules are plain local dat
 
 ## Contributing
 
+Growth norms (no fake stars / spam): [docs/GROWTH.md](docs/GROWTH.md).
+
+
 1. Read **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**.
 2. Work on **`beta`** and open PRs against **`beta`** (`com.endroid.latch.beta`).
 3. Grab a [good first issue](https://github.com/wized2/Latch/labels/good%20first%20issue).

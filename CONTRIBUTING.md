@@ -36,6 +36,10 @@ Comment on an issue when you start work.
 | [SECURITY.md](SECURITY.md) | Vulnerabilities |
 | [recipes/README.md](recipes/README.md) | Importable rule packs |
 
+## Growth & community
+
+See [docs/GROWTH.md](docs/GROWTH.md) — no fake stars, no trackers, honest listings only.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
