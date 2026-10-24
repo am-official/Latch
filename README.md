@@ -77,6 +77,28 @@ com.endroid.latch.api.RUN_RULE       extra rule_id=<uuid>
 |---------|------|
 | **[Fern](https://github.com/wized2/Fern)** | Material You system monitor (CPU, RAM, battery, Shizuku) |
 
+
+## Why Latch vs others?
+
+| | Latch | Tasker | MacroDroid |
+|--|-------|--------|------------|
+| Cloud / account | Never | Optional | Optional |
+| Trackers / ads | None | None (paid) | Free has limits |
+| Open source | MIT | No | No |
+| Shizuku / root optional | Yes | Plugin ecosystem | Limited |
+| Beginner recipes | JSON packs in `/recipes` | Community | Built-in |
+
+## Install options
+
+- **GitHub Releases** — [latest APK](https://github.com/wized2/Latch/releases/latest)
+- **[Obtainium](https://github.com/ImranR98/Obtainium)** — add `https://github.com/wized2/Latch` for update checks
+- **F-Droid / IzzyOnDroid** — metadata prepared under `fastlane/`; listing pending
+
+## Recipe packs
+
+Import JSON from [`recipes/`](recipes/) (work Wi‑Fi silent, headphones → music, night silent, low battery, boot notify, …).
+
+
 ## Why Latch?
 
 Tasker-class power without cloud accounts or trackers. Rules are plain local data; optional elevation is explicit.

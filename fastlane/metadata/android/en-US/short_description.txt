@@ -1,0 +1,1 @@
+Privacy-first Tasker-style rules. Local only, optional Shizuku.

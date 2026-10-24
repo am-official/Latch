@@ -1,0 +1,22 @@
+{
+  "rules": [
+    {
+      "id": "recipe-night-silent",
+      "name": "Night silent window",
+      "enabled": true,
+      "trigger": "TIME_WINDOW",
+      "triggerValue": 1320,
+      "triggerValue2": 420,
+      "triggerParam": "127",
+      "condition": "NONE",
+      "conditionValue": 0,
+      "cooldownSec": 300,
+      "notes": "Recipe: silent 22:00–07:00 (minutes from midnight). Edit times as needed.",
+      "tag": "recipe",
+      "profileId": "default",
+      "actions": [
+        {"type": "SET_RINGER", "text": "", "title": "", "ringerMode": "SILENT", "param": ""}
+      ]
+    }
+  ]
+}

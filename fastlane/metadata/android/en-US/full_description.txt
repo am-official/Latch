@@ -1,0 +1,9 @@
+Latch runs if/then automation on your phone without accounts, ads, or cloud sync.
+
+• Triggers: battery, Wi‑Fi/SSID, Bluetooth, headphones, time, boot, apps
+• Actions: notify, ringer, brightness, open app/URL, shell (optional root/Shizuku)
+• JSON import/export of recipes
+• Material You theme
+• No INTERNET permission
+
+FOSS (MIT). Optional elevation is always explicit.

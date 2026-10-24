@@ -1,0 +1,23 @@
+{
+  "rules": [
+    {
+      "id": "recipe-headphones-open-music",
+      "name": "Headphones → music app",
+      "enabled": true,
+      "trigger": "HEADPHONES_CONNECTED",
+      "triggerValue": 0,
+      "triggerValue2": 0,
+      "triggerParam": "",
+      "condition": "NONE",
+      "conditionValue": 0,
+      "cooldownSec": 15,
+      "notes": "Recipe: open your music app when headphones connect (edit package in action)",
+      "tag": "recipe",
+      "profileId": "default",
+      "actions": [
+        {"type": "OPEN_APP", "text": "", "title": "", "ringerMode": "NORMAL", "param": "com.google.android.apps.youtube.music"},
+        {"type": "TOAST", "text": "Headphones connected", "title": "", "ringerMode": "NORMAL", "param": ""}
+      ]
+    }
+  ]
+}

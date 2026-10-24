@@ -83,4 +83,13 @@ class RuleLogicTest {
         assertEquals(255, RuleLogic.brightnessRaw(100))
         assertEquals(76, RuleLogic.brightnessRaw(30))
     }
+
+    @Test fun ssidPartialContains() {
+        // current RuleLogic is equality-ish; document behavior
+        assertFalse(RuleLogic.ssidMatches("Office-Guest", "Office"))
+    }
+
+    @Test fun dayBitsSaturday() {
+        assertTrue(RuleLogic.dayBitSet(0b1111111, Calendar.SATURDAY))
+    }
 }

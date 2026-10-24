@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Latch</string>
+    <string name="channel_actions">Acciones de Latch</string>
+    <string name="channel_actions_desc">Notificaciones de reglas de automatización</string>
+</resources>
