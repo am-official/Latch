@@ -1,0 +1,23 @@
+{
+  "rules": [
+    {
+      "id": "recipe-car-bluetooth-vibrate",
+      "name": "Car Bluetooth → vibrate",
+      "enabled": true,
+      "trigger": "BLUETOOTH_CONNECTED",
+      "triggerValue": 0,
+      "triggerValue2": 0,
+      "triggerParam": "",
+      "condition": "NONE",
+      "conditionValue": 0,
+      "cooldownSec": 30,
+      "notes": "Recipe: ringer to vibrate when a Bluetooth device connects. Fires for ANY device (earbuds, watch, car): Latch has no per-device filter yet, so refine it yourself, e.g. add a condition or move the rule to a car profile. Needs the Bluetooth permission.",
+      "tag": "recipe",
+      "profileId": "default",
+      "actions": [
+        {"type": "RINGER_MODE", "text": "", "title": "", "ringerMode": "VIBRATE", "param": ""},
+        {"type": "NOTIFY", "text": "Bluetooth connected — ringer on vibrate", "title": "Latch", "ringerMode": "NORMAL", "param": ""}
+      ]
+    }
+  ]
+}
