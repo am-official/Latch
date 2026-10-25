@@ -11,5 +11,6 @@ Import any JSON file from the app (**Import rules**) or merge the `rules` array 
 | `charging_notify.json` | Notify when charging starts |
 | `night_dnd.json` | Silent between 22:00 and 07:00 |
 | `boot_welcome.json` | Notify after boot |
+| `car_bluetooth.json` | Vibrate ringer when a Bluetooth device connects (fires for any device: refine before use) |
 
 Edit SSID, packages, and times before relying on a recipe.
